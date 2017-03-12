@@ -5,13 +5,14 @@ That want to show how fast the netty is, and how the API design of netty is pret
 
 ### Support Proxy
 - HTTP Proxy
-- HTTP Proxy (Tunnel) (WIP)
-- Socks Proxy (WIP)
+- HTTP Proxy (Tunnel)
+- Socks Proxy
 
 ### Support Protocol
 - HTTP/1
 - HTTP/2 (WIP)
 - WebSocket (WIP)
+- TLS
 
 ### Support Functionality
 - Display network traffic
