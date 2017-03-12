@@ -3,9 +3,12 @@ package com.github.chhsiao.nitm.nitmproxy.layer.proxy;
 import com.github.chhsiao.nitm.nitmproxy.Address;
 import com.github.chhsiao.nitm.nitmproxy.ConnectionInfo;
 import com.github.chhsiao.nitm.nitmproxy.NitmProxyConfig;
+import com.github.chhsiao.nitm.nitmproxy.layer.protocol.http1.Http1BackendHandler;
 import com.github.chhsiao.nitm.nitmproxy.layer.protocol.http1.Http1FrontendHandler;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.socksx.SocksMessage;
 import io.netty.handler.codec.socksx.SocksPortUnificationServerHandler;
@@ -88,34 +91,61 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
 
     private void onSuccess(ChannelHandlerContext ctx, Socks4CommandRequest request) {
         Address serverAddr = new Address(request.dstAddr(), request.dstPort());
-        ChannelPromise promise = ctx.newPromise();
-        Http1FrontendHandler handler = new Http1FrontendHandler(
-                config, new ConnectionInfo(connectionInfo.getClientAddr(), serverAddr), promise);
-        promise.addListener(future -> {
-            Socks4CommandStatus status = future.isSuccess() ? Socks4CommandStatus.SUCCESS
-                    : Socks4CommandStatus.REJECTED_OR_FAILED;
-            ctx.channel().writeAndFlush(new DefaultSocks4CommandResponse(
-                    status,
-                    request.dstAddr(),
-                    request.dstPort()));
+        createServerChannel(ctx, serverAddr).addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if (future.isSuccess()) {
+                    ctx.channel().writeAndFlush(new DefaultSocks4CommandResponse(
+                            Socks4CommandStatus.SUCCESS,
+                            request.dstAddr(),
+                            request.dstPort()));
+                    Http1FrontendHandler handler = new Http1FrontendHandler(
+                            config, new ConnectionInfo(connectionInfo.getClientAddr(), serverAddr), future.channel());
+                    ctx.pipeline().replace(SocksProxyHandler.this, null, handler);
+                } else {
+                    ctx.channel().writeAndFlush(new DefaultSocks4CommandResponse(
+                            Socks4CommandStatus.REJECTED_OR_FAILED,
+                            request.dstAddr(),
+                            request.dstPort()));
+                    ctx.close();
+                }
+            }
         });
-        ctx.pipeline().replace(this, null, handler);
     }
 
     private void onSuccess(ChannelHandlerContext ctx, Socks5CommandRequest request) {
         Address serverAddr = new Address(request.dstAddr(), request.dstPort());
-        ChannelPromise promise = ctx.newPromise();
-        Http1FrontendHandler handler = new Http1FrontendHandler(
-                config, new ConnectionInfo(connectionInfo.getClientAddr(), serverAddr), promise);
-        promise.addListener(future -> {
-            Socks5CommandStatus status = future.isSuccess() ? Socks5CommandStatus.SUCCESS
-                    : Socks5CommandStatus.FAILURE;
-            ctx.channel().writeAndFlush(new DefaultSocks5CommandResponse(
-                    status,
-                    request.dstAddrType(),
-                    request.dstAddr(),
-                    request.dstPort()));
+        createServerChannel(ctx, serverAddr).addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                if (future.isSuccess()) {
+                    ctx.channel().writeAndFlush(new DefaultSocks5CommandResponse(
+                            Socks5CommandStatus.SUCCESS,
+                            request.dstAddrType(),
+                            request.dstAddr(),
+                            request.dstPort()));
+                    Http1FrontendHandler handler = new Http1FrontendHandler(
+                            config, new ConnectionInfo(connectionInfo.getClientAddr(), serverAddr), future.channel());
+                    ctx.pipeline().replace(SocksProxyHandler.this, null, handler);
+                } else {
+                    ctx.channel().writeAndFlush(new DefaultSocks5CommandResponse(
+                            Socks5CommandStatus.FAILURE,
+                            request.dstAddrType(),
+                            request.dstAddr(),
+                            request.dstPort()));
+                    ctx.close();
+                }
+            }
         });
-        ctx.pipeline().replace(this, null, handler);
+    }
+
+    private ChannelFuture createServerChannel(ChannelHandlerContext ctx, Address serverAddr) {
+        ConnectionInfo newConnectionInfo = new ConnectionInfo(
+                connectionInfo.getClientAddr(), new Address(serverAddr.getHost(), serverAddr.getPort()));
+        Bootstrap bootstrap = new Bootstrap()
+                .group(ctx.channel().eventLoop())
+                .channel(ctx.channel().getClass())
+                .handler(new Http1BackendHandler(config, newConnectionInfo, ctx.channel()));
+        return bootstrap.connect(serverAddr.getHost(), serverAddr.getPort());
     }
 }

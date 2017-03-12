@@ -11,7 +11,6 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.DefaultHttpResponse;
@@ -22,7 +21,6 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.concurrent.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,20 +37,18 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
     private NitmProxyConfig config;
     private ConnectionInfo connectionInfo;
 
-    private OutboundChannel outboundChannel;
+    private Channel outboundChannel;
     private ChannelHandler httpServerCodec;
 
-    private ChannelPromise promise;
-
     public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo) {
+        this(config, connectionInfo, null);
+    }
+
+    public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo, Channel outboundChannel) {
         super();
         this.config = config;
         this.connectionInfo = connectionInfo;
-    }
-
-    public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo, ChannelPromise promise) {
-        this(config, connectionInfo);
-        this.promise = promise;
+        this.outboundChannel = outboundChannel;
     }
 
     @Override
@@ -61,11 +57,6 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
 
         httpServerCodec = new HttpServerCodec();
         ctx.pipeline().addBefore(ctx.name(), null, httpServerCodec);
-
-        if (connectionInfo.getServerAddr() != null) {
-            outboundChannel = createOutboundChannel(
-                    ctx, connectionInfo.getServerAddr(), promise);
-        }
     }
 
     @Override
@@ -75,7 +66,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
         ctx.pipeline().remove(httpServerCodec);
 
         if (outboundChannel != null) {
-            outboundChannel.channel().close();
+            outboundChannel.close();
         }
     }
 
@@ -108,8 +99,8 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
             Http1FrontendHandler connectedHandler = new Http1FrontendHandler(config, newConnInfo);
             ctx.pipeline().replace(this, null, connectedHandler);
         } else {
-            outboundChannel = createOutboundChannel(
-                    ctx, new Address(fullPath.host, fullPath.port), ctx.newPromise());
+            createOrGetOutboundChannel(
+                    ctx, new Address(fullPath.host, fullPath.port));
             HttpRequest newRequest = new DefaultHttpRequest(
                     request.protocolVersion(), request.method(), fullPath.path, request.headers());
 
@@ -140,13 +131,12 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
         return Integer.parseInt(port);
     }
 
-    private OutboundChannel createOutboundChannel(ChannelHandlerContext ctx, Address serverAddr, ChannelPromise promise) throws InterruptedException {
+    private void createOrGetOutboundChannel(ChannelHandlerContext ctx, Address serverAddr) throws InterruptedException {
         if (outboundChannel != null) {
-            if (outboundChannel.address.equals(serverAddr)) {
-                promise.setSuccess();
-                return outboundChannel;
+            if (connectionInfo.getServerAddr().equals(serverAddr)) {
+                return;
             }
-            outboundChannel.channel().close();
+            outboundChannel.close();
             outboundChannel = null;
         }
 
@@ -160,45 +150,13 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
         future.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
-                if (future.isSuccess()) {
-                    promise.setSuccess();
-                } else {
-                    promise.setFailure(future.cause());
+                if (!future.isSuccess()) {
                     ctx.channel().close();
                 }
             }
         });
 
-        return new OutboundChannel(serverAddr, future);
-    }
-
-    private static class OutboundChannel {
-        private Address address;
-        private ChannelFuture channelFuture;
-
-        private OutboundChannel(Address address, ChannelFuture channelFuture) {
-            this.address = address;
-            this.channelFuture = channelFuture;
-        }
-
-        private Channel channel() {
-            return channelFuture.channel();
-        }
-
-        private void writeAndFlush(HttpObject httpObject) {
-            if (channelFuture.isSuccess()) {
-                channelFuture.channel().writeAndFlush(httpObject);
-            } else {
-                channelFuture.addListener(new ChannelFutureListener() {
-                    @Override
-                    public void operationComplete(ChannelFuture future) throws Exception {
-                        if (future.isSuccess()) {
-                            future.channel().writeAndFlush(httpObject);
-                        }
-                    }
-                });
-            }
-        }
+        outboundChannel = future.channel();
     }
 
     private static class FullPath {
