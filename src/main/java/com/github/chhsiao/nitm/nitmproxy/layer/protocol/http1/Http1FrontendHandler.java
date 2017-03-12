@@ -11,6 +11,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.DefaultHttpResponse;
@@ -21,13 +22,14 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.concurrent.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Preconditions.*;
 
 public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject> {
     private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
@@ -40,10 +42,17 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
     private OutboundChannel outboundChannel;
     private ChannelHandler httpServerCodec;
 
+    private ChannelPromise promise;
+
     public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo) {
         super();
         this.config = config;
         this.connectionInfo = connectionInfo;
+    }
+
+    public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo, ChannelPromise promise) {
+        this(config, connectionInfo);
+        this.promise = promise;
     }
 
     @Override
@@ -52,6 +61,11 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
 
         httpServerCodec = new HttpServerCodec();
         ctx.pipeline().addBefore(ctx.name(), null, httpServerCodec);
+
+        if (connectionInfo.getServerAddr() != null) {
+            outboundChannel = createOutboundChannel(
+                    ctx, connectionInfo.getServerAddr(), promise);
+        }
     }
 
     @Override
@@ -62,16 +76,6 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
 
         if (outboundChannel != null) {
             outboundChannel.channel().close();
-        }
-    }
-
-    @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : Http1FrontendHandler channelActive", connectionInfo);
-
-        if (connectionInfo.getServerAddr() != null) {
-            outboundChannel = createOutboundChannel(
-                    ctx, connectionInfo.getServerAddr());
         }
     }
 
@@ -105,7 +109,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
             ctx.pipeline().replace(this, null, connectedHandler);
         } else {
             outboundChannel = createOutboundChannel(
-                    ctx, new Address(fullPath.host, fullPath.port));
+                    ctx, new Address(fullPath.host, fullPath.port), ctx.newPromise());
             HttpRequest newRequest = new DefaultHttpRequest(
                     request.protocolVersion(), request.method(), fullPath.path, request.headers());
 
@@ -136,9 +140,10 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
         return Integer.parseInt(port);
     }
 
-    private OutboundChannel createOutboundChannel(ChannelHandlerContext ctx, Address serverAddr) throws InterruptedException {
+    private OutboundChannel createOutboundChannel(ChannelHandlerContext ctx, Address serverAddr, ChannelPromise promise) throws InterruptedException {
         if (outboundChannel != null) {
             if (outboundChannel.address.equals(serverAddr)) {
+                promise.setSuccess();
                 return outboundChannel;
             }
             outboundChannel.channel().close();
@@ -155,7 +160,10 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<HttpObject
         future.addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
-                if (!future.isSuccess()) {
+                if (future.isSuccess()) {
+                    promise.setSuccess();
+                } else {
+                    promise.setFailure(future.cause());
                     ctx.channel().close();
                 }
             }

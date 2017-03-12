@@ -11,7 +11,7 @@ public class NitmProxy {
     public static void main(String[] args) throws Exception {
         NitmProxyConfig config = new NitmProxyConfig();
         config.setMaxContentLength(4096);
-        config.setProxyMode(ProxyMode.HTTP);
+        config.setProxyMode(ProxyMode.SOCKS);
 
         NioEventLoopGroup bossGroup = new NioEventLoopGroup(1);
         NioEventLoopGroup workerGroup = new NioEventLoopGroup();
