@@ -10,7 +10,7 @@ That want to show how fast the netty is, and how the API design of netty is pret
 
 ### Support Protocol
 - HTTP/1
-- HTTP/2 (WIP)
+- HTTP/2
 - WebSocket (WIP)
 - TLS
 
