@@ -10,7 +10,6 @@ import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SupportedCipherSuiteFilter;
-import io.netty.handler.ssl.util.SelfSignedCertificate;
 
 import javax.net.ssl.SSLException;
 import java.security.cert.CertificateException;
@@ -29,26 +28,26 @@ public class TlsUtil {
                         Protocol.ALPN,
                         SelectorFailureBehavior.NO_ADVERTISE,
                         SelectedListenerFailureBehavior.ACCEPT,
-                        ApplicationProtocolNames.HTTP_1_1,
-                        ApplicationProtocolNames.HTTP_2))
+                        ApplicationProtocolNames.HTTP_2,
+                        ApplicationProtocolNames.HTTP_1_1))
                 .build();
     }
 
-    public static SslContext serverCtx(NitmProxyConfig config) throws SSLException, CertificateException {
+    public static SslContext serverCtx(NitmProxyConfig config) throws SSLException {
         return serverCtx(config, "localhost");
     }
 
-    public static SslContext serverCtx(NitmProxyConfig config, String serverHost) throws SSLException, CertificateException {
-        SelfSignedCertificate ssc = new SelfSignedCertificate(serverHost);
+    public static SslContext serverCtx(NitmProxyConfig config, String serverHost) throws SSLException {
+        Certificate certificate = CertUtil.newCert(config.getCertFile(), config.getKeyFile(), serverHost);
         return SslContextBuilder
-                .forServer(ssc.certificate(), ssc.privateKey())
+                .forServer(certificate.getKeyPair().getPrivate(), certificate.getChain())
                 .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE)
                 .applicationProtocolConfig(new ApplicationProtocolConfig(
                         Protocol.ALPN,
                         SelectorFailureBehavior.NO_ADVERTISE,
                         SelectedListenerFailureBehavior.ACCEPT,
-                        ApplicationProtocolNames.HTTP_1_1,
-                        ApplicationProtocolNames.HTTP_2))
+                        ApplicationProtocolNames.HTTP_2,
+                        ApplicationProtocolNames.HTTP_1_1))
                 .build();
     }
 }

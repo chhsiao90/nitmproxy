@@ -4,10 +4,20 @@ import com.github.chhsiao.nitm.nitmproxy.ConnectionInfo;
 import com.github.chhsiao.nitm.nitmproxy.NitmProxyConfig;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.handler.codec.http2.Http2Codec;
-import io.netty.util.ReferenceCountUtil;
+import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpMessage;
+import io.netty.handler.codec.http2.DefaultHttp2Connection;
+import io.netty.handler.codec.http2.DelegatingDecompressorFrameListener;
+import io.netty.handler.codec.http2.Http2Connection;
+import io.netty.handler.codec.http2.Http2FrameLogger;
+import io.netty.handler.codec.http2.HttpConversionUtil.ExtensionHeaderNames;
+import io.netty.handler.codec.http2.HttpToHttp2ConnectionHandlerBuilder;
+import io.netty.handler.codec.http2.InboundHttp2ToHttpAdapterBuilder;
+import io.netty.handler.logging.LogLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +50,20 @@ public class Http2BackendHandler extends ChannelInboundHandlerAdapter {
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         LOGGER.info("{} : handlerAdded", connectionInfo);
 
-        ctx.pipeline().addBefore(ctx.name(), null, new Http2Codec(false, new Http2Handler()));
+        Http2Connection connection = new DefaultHttp2Connection(false);
+        ChannelHandler http2ConnHandler = new HttpToHttp2ConnectionHandlerBuilder()
+                .frameListener(new DelegatingDecompressorFrameListener(
+                        connection,
+                        new InboundHttp2ToHttpAdapterBuilder(connection)
+                                .maxContentLength(config.getMaxContentLength())
+                                .propagateSettings(true)
+                                .build()))
+                .frameLogger(new Http2FrameLogger(LogLevel.DEBUG))
+                .connection(connection)
+                .build();
+        ctx.pipeline()
+           .addBefore(ctx.name(), null, http2ConnHandler)
+           .addBefore(ctx.name(), null, new Http2Handler());
     }
 
     private class Http2Handler extends ChannelDuplexHandler {
@@ -50,6 +73,16 @@ public class Http2BackendHandler extends ChannelInboundHandlerAdapter {
                         connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
                         msg);
             outboundChannel.writeAndFlush(msg);
+        }
+
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            if (msg instanceof HttpMessage) {
+                HttpMessage httpMessage = (HttpMessage) msg;
+                httpMessage.headers().add(ExtensionHeaderNames.SCHEME.text(), "https");
+            }
+
+            ctx.writeAndFlush(msg, promise);
         }
     }
 }

@@ -10,8 +10,6 @@ import io.netty.handler.logging.LoggingHandler;
 public class NitmProxy {
     public static void main(String[] args) throws Exception {
         NitmProxyConfig config = new NitmProxyConfig();
-        config.setMaxContentLength(4096);
-        config.setProxyMode(ProxyMode.HTTP);
 
         NioEventLoopGroup bossGroup = new NioEventLoopGroup(1);
         NioEventLoopGroup workerGroup = new NioEventLoopGroup();

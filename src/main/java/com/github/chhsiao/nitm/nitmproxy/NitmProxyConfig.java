@@ -8,6 +8,10 @@ public class NitmProxyConfig {
 
     private List<Integer> httpsPorts;
 
+    private String certFile;
+
+    private String keyFile;
+
     private int maxContentLength;
 
     public NitmProxyConfig() {
@@ -15,8 +19,10 @@ public class NitmProxyConfig {
         proxyMode = ProxyMode.HTTP;
 
         httpsPorts = Arrays.asList(443, 8443);
+        certFile = "server.pem";
+        keyFile = "key.pem";
 
-        maxContentLength = 4096;
+        maxContentLength = 1024 * 1024;
     }
 
     public ProxyMode getProxyMode() {
@@ -37,6 +43,22 @@ public class NitmProxyConfig {
 
     public boolean isTls(int port) {
         return httpsPorts.contains(port);
+    }
+
+    public String getCertFile() {
+        return certFile;
+    }
+
+    public void setCertFile(String certFile) {
+        this.certFile = certFile;
+    }
+
+    public String getKeyFile() {
+        return keyFile;
+    }
+
+    public void setKeyFile(String keyFile) {
+        this.keyFile = keyFile;
     }
 
     public int getMaxContentLength() {
