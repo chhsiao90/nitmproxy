@@ -4,6 +4,8 @@ import com.github.chhsiao.nitm.nitmproxy.ConnectionInfo;
 import com.github.chhsiao.nitm.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao.nitm.nitmproxy.layer.protocol.http1.Http1BackendHandler;
 import com.github.chhsiao.nitm.nitmproxy.layer.protocol.http1.Http1FrontendHandler;
+import com.github.chhsiao.nitm.nitmproxy.layer.protocol.http2.Http2BackendHandler;
+import com.github.chhsiao.nitm.nitmproxy.layer.protocol.http2.Http2FrontendHandler;
 import com.github.chhsiao.nitm.nitmproxy.tls.TlsUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -52,7 +54,7 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
         LOGGER.info("{} : TlsHandler(client={}) handlerAdded", connectionInfo, client);
 
         if (config.isTls(connectionInfo.getServerAddr().getPort())) {
-            SslHandler sslHandler = TlsUtil.ctx(config, client).newHandler(ctx.alloc());
+            SslHandler sslHandler = TlsUtil.ctx(config, client, connectionInfo.getServerAddr().getHost()).newHandler(ctx.alloc());
             ctx.pipeline()
                .addBefore(ctx.name(), null, sslHandler)
                .addBefore(ctx.name(), null, new AlpnHandler());
@@ -101,7 +103,13 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
     }
 
     private void configHttp2(ChannelHandlerContext ctx) {
-
+        if (client) {
+            Http2BackendHandler backendHandler = new Http2BackendHandler(config, connectionInfo, outboundChannel);
+            ctx.pipeline().replace(this, null, backendHandler);
+        } else {
+            Http2FrontendHandler frontendHandler = new Http2FrontendHandler(config, connectionInfo, outboundChannel);
+            ctx.pipeline().replace(this, null, frontendHandler);
+        }
     }
 
     private class AlpnHandler extends ApplicationProtocolNegotiationHandler {

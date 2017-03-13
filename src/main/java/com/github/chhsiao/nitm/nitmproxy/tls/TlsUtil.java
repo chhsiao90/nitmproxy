@@ -16,9 +16,9 @@ import javax.net.ssl.SSLException;
 import java.security.cert.CertificateException;
 
 public class TlsUtil {
-    public static SslContext ctx(NitmProxyConfig config, boolean client)
+    public static SslContext ctx(NitmProxyConfig config, boolean client, String host)
             throws SSLException, CertificateException {
-        return client ? clientCtx(config) : serverCtx(config);
+        return client ? clientCtx(config) : serverCtx(config, host);
     }
 
     public static SslContext clientCtx(NitmProxyConfig config) throws SSLException {
@@ -29,7 +29,8 @@ public class TlsUtil {
                         Protocol.ALPN,
                         SelectorFailureBehavior.NO_ADVERTISE,
                         SelectedListenerFailureBehavior.ACCEPT,
-                        ApplicationProtocolNames.HTTP_1_1))
+                        ApplicationProtocolNames.HTTP_1_1,
+                        ApplicationProtocolNames.HTTP_2))
                 .build();
     }
 
@@ -46,7 +47,8 @@ public class TlsUtil {
                         Protocol.ALPN,
                         SelectorFailureBehavior.NO_ADVERTISE,
                         SelectedListenerFailureBehavior.ACCEPT,
-                        ApplicationProtocolNames.HTTP_1_1))
+                        ApplicationProtocolNames.HTTP_1_1,
+                        ApplicationProtocolNames.HTTP_2))
                 .build();
     }
 }
