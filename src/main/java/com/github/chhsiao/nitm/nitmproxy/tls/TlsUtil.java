@@ -1,10 +1,15 @@
 package com.github.chhsiao.nitm.nitmproxy.tls;
 
 import com.github.chhsiao.nitm.nitmproxy.NitmProxyConfig;
-import io.netty.handler.ssl.OpenSsl;
+import io.netty.handler.codec.http2.Http2SecurityUtil;
+import io.netty.handler.ssl.ApplicationProtocolConfig;
+import io.netty.handler.ssl.ApplicationProtocolConfig.Protocol;
+import io.netty.handler.ssl.ApplicationProtocolConfig.SelectedListenerFailureBehavior;
+import io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBehavior;
+import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslProvider;
+import io.netty.handler.ssl.SupportedCipherSuiteFilter;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
 
 import javax.net.ssl.SSLException;
@@ -19,19 +24,29 @@ public class TlsUtil {
     public static SslContext clientCtx(NitmProxyConfig config) throws SSLException {
         return SslContextBuilder
                 .forClient()
-                .sslProvider(sslProvider())
+                .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE)
+                .applicationProtocolConfig(new ApplicationProtocolConfig(
+                        Protocol.ALPN,
+                        SelectorFailureBehavior.NO_ADVERTISE,
+                        SelectedListenerFailureBehavior.ACCEPT,
+                        ApplicationProtocolNames.HTTP_1_1))
                 .build();
     }
 
     public static SslContext serverCtx(NitmProxyConfig config) throws SSLException, CertificateException {
-        SelfSignedCertificate ssc = new SelfSignedCertificate();
-        return SslContextBuilder
-                .forServer(ssc.certificate(), ssc.privateKey())
-                .sslProvider(sslProvider())
-                .build();
+        return serverCtx(config, "localhost");
     }
 
-    private static SslProvider sslProvider() {
-        return OpenSsl.isAlpnSupported() ? SslProvider.OPENSSL : SslProvider.JDK;
+    public static SslContext serverCtx(NitmProxyConfig config, String serverHost) throws SSLException, CertificateException {
+        SelfSignedCertificate ssc = new SelfSignedCertificate(serverHost);
+        return SslContextBuilder
+                .forServer(ssc.certificate(), ssc.privateKey())
+                .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE)
+                .applicationProtocolConfig(new ApplicationProtocolConfig(
+                        Protocol.ALPN,
+                        SelectorFailureBehavior.NO_ADVERTISE,
+                        SelectedListenerFailureBehavior.ACCEPT,
+                        ApplicationProtocolNames.HTTP_1_1))
+                .build();
     }
 }

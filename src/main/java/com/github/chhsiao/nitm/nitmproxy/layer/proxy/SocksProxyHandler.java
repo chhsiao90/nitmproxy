@@ -3,8 +3,6 @@ package com.github.chhsiao.nitm.nitmproxy.layer.proxy;
 import com.github.chhsiao.nitm.nitmproxy.Address;
 import com.github.chhsiao.nitm.nitmproxy.ConnectionInfo;
 import com.github.chhsiao.nitm.nitmproxy.NitmProxyConfig;
-import com.github.chhsiao.nitm.nitmproxy.layer.protocol.http1.Http1BackendHandler;
-import com.github.chhsiao.nitm.nitmproxy.layer.protocol.http1.Http1FrontendHandler;
 import com.github.chhsiao.nitm.nitmproxy.layer.protocol.tls.TlsHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -58,8 +56,7 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         LOGGER.info("{} : SocksProxyHandler handlerAdded", connectionInfo);
 
-        Socks5ServerEncoder socks5ServerEncoder = addChannelHandler(
-                new Socks5ServerEncoder(Socks5AddressEncoder.DEFAULT));
+        Socks5ServerEncoder socks5ServerEncoder = new Socks5ServerEncoder(Socks5AddressEncoder.DEFAULT);
         SocksPortUnificationServerHandler socksPortUnificationServerHandler = new SocksPortUnificationServerHandler(socks5ServerEncoder);
         ctx.pipeline().addBefore(ctx.name(), null, socksPortUnificationServerHandler);
     }
@@ -166,11 +163,9 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
     }
 
     private void onServerConnected(ChannelHandlerContext ctx, ConnectionInfo connectionInfo, Channel outboundChannel) {
-        Http1FrontendHandler handler = new Http1FrontendHandler(
-                config, connectionInfo, outboundChannel);
+        TlsHandler tlsHandler = new TlsHandler(config, connectionInfo, outboundChannel, false);
         ctx.pipeline()
-           .addBefore(ctx.name(), null, new TlsHandler(config, connectionInfo, false))
-           .replace(SocksProxyHandler.this, null, handler);
+           .replace(SocksProxyHandler.this, null, tlsHandler);
     }
 
     private ChannelFuture createServerChannel(ChannelHandlerContext ctx, Address serverAddr) {
@@ -182,9 +177,8 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
                 .handler(new ChannelInitializer<Channel>() {
                     @Override
                     protected void initChannel(Channel channel) throws Exception {
-                        channel.pipeline().addLast(
-                                new TlsHandler(config, newConnectionInfo, true),
-                                new Http1BackendHandler(config, newConnectionInfo, ctx.channel()));
+                        TlsHandler tlsHandler = new TlsHandler(config, newConnectionInfo, ctx.channel(), true);
+                        channel.pipeline().addLast(tlsHandler);
                     }
                 });
         return bootstrap.connect(serverAddr.getHost(), serverAddr.getPort());

@@ -18,7 +18,6 @@ import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
@@ -48,11 +47,11 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
     private ChannelHandler httpObjectAggregator;
 
     public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo) {
-        this(config, connectionInfo, null);
+        this(config, connectionInfo, null, false);
     }
 
     public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo, Channel outboundChannel) {
-        this(config, connectionInfo, outboundChannel, false);
+        this(config, connectionInfo, outboundChannel, true);
     }
 
     public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo, Channel outboundChannel,
@@ -118,11 +117,9 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                             LOGGER.info("[Client ({})] <= [Proxy] : {}", connectionInfo.getClientAddr(), response);
                             ctx.writeAndFlush(response);
 
-                            ConnectionInfo newConnInfo = new ConnectionInfo(
-                                    connectionInfo.getClientAddr(), address);
-                            ctx.pipeline()
-                               .addBefore(ctx.name(), null, new TlsHandler(config, connectionInfo, false))
-                               .replace(Http1FrontendHandler.this, null, new Http1FrontendHandler(config, newConnInfo, future.channel(), true));
+                            ConnectionInfo newConnInfo = new ConnectionInfo(connectionInfo.getClientAddr(), address);
+                            TlsHandler tlsHandler = new TlsHandler(config, newConnInfo, future.channel(), false);
+                            ctx.pipeline().replace(Http1FrontendHandler.this, null, tlsHandler);
                         }
                     }
                 });
@@ -187,9 +184,8 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                 .handler(new ChannelInitializer<Channel>() {
                     @Override
                     protected void initChannel(Channel ch) throws Exception {
-                        ch.pipeline().addLast(
-                                new TlsHandler(config, connectionInfo, true),
-                                new Http1BackendHandler(config, connectionInfo, ctx.channel()));
+                        TlsHandler tlsHandler = new TlsHandler(config, connectionInfo, ctx.channel(), true);
+                        ch.pipeline().addLast(tlsHandler);
                     }
                 });
         ChannelFuture future = bootstrap.connect(serverAddr.getHost(), serverAddr.getPort());

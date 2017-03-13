@@ -13,8 +13,12 @@ import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Http1BackendHandler.class);
@@ -38,10 +42,17 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
 
         if (delayOutboundHandler != null) {
             ChannelHandlerContext delayOutboundCtx = ctx.pipeline().context(delayOutboundHandler);
-            delayOutboundHandler.flushPendings(delayOutboundCtx);
+
+            delayOutboundHandler.writePendings(delayOutboundCtx);
+            ctx.flush();
             ctx.pipeline().remove(delayOutboundHandler);
             delayOutboundHandler = null;
         }
+    }
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        LOGGER.info("{} : Http1BackendHandler channelInactive", connectionInfo);
     }
 
     @Override
@@ -67,21 +78,26 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
     }
 
     private static class DelayOutboundHandler extends ChannelOutboundHandlerAdapter {
-        private Deque<Object> pendings = new ConcurrentLinkedDeque<>();
+        private List<Object> pendings = new ArrayList<>();
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
             if (ctx.channel().isActive()) {
-                pendings.forEach(ctx::write);
+                writePendings(ctx);
                 ctx.writeAndFlush(msg, promise);
             } else {
-                pendings.push(msg);
+                synchronized (this) {
+                    pendings.add(msg);
+                }
             }
         }
 
-        private void flushPendings(ChannelHandlerContext ctx) {
-            pendings.forEach(ctx::write);
-            ctx.flush();
+        private synchronized void writePendings(ChannelHandlerContext ctx) {
+            Iterator<Object> iterator = pendings.iterator();
+            while (iterator.hasNext()) {
+                ctx.write(iterator.next());
+                iterator.remove();
+            }
         }
     }
 }
