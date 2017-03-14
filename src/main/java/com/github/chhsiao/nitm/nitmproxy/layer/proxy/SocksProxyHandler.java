@@ -54,7 +54,7 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : SocksProxyHandler handlerAdded", connectionInfo);
+        LOGGER.info("{} : handlerAdded", connectionInfo.toString(true));
 
         Socks5ServerEncoder socks5ServerEncoder = new Socks5ServerEncoder(Socks5AddressEncoder.DEFAULT);
         SocksPortUnificationServerHandler socksPortUnificationServerHandler = new SocksPortUnificationServerHandler(socks5ServerEncoder);
@@ -63,7 +63,7 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : SocksProxyHandler handlerRemoved", connectionInfo);
+        LOGGER.info("{} : handlerRemoved", connectionInfo.toString(true));
 
         handlers.forEach(ctx.pipeline()::remove);
         handlers.clear();
@@ -163,7 +163,7 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
     }
 
     private void onServerConnected(ChannelHandlerContext ctx, ConnectionInfo connectionInfo, Channel outboundChannel) {
-        TlsHandler tlsHandler = new TlsHandler(config, connectionInfo, outboundChannel, false);
+        TlsHandler tlsHandler = new TlsHandler(config, connectionInfo, outboundChannel, true);
         ctx.pipeline()
            .replace(SocksProxyHandler.this, null, tlsHandler);
     }
@@ -177,7 +177,7 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
                 .handler(new ChannelInitializer<Channel>() {
                     @Override
                     protected void initChannel(Channel channel) throws Exception {
-                        TlsHandler tlsHandler = new TlsHandler(config, newConnectionInfo, ctx.channel(), true);
+                        TlsHandler tlsHandler = new TlsHandler(config, newConnectionInfo, ctx.channel(), false);
                         channel.pipeline().addLast(tlsHandler);
                     }
                 });

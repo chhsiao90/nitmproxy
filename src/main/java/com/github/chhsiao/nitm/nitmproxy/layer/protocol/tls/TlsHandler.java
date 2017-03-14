@@ -13,10 +13,12 @@ import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -43,10 +45,10 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : TlsHandler(client={}) handlerAdded", connectionInfo, client);
+        LOGGER.info("{} : handlerAdded", connectionInfo.toString(client));
 
-        if (config.isTls(connectionInfo.getServerAddr().getPort())) {
-            SslHandler sslHandler = TlsUtil.ctx(config, client, connectionInfo.getServerAddr().getHost()).newHandler(ctx.alloc());
+        if (config.getHttpsPorts().contains(connectionInfo.getServerAddr().getPort())) {
+            SslHandler sslHandler = sslCtx().newHandler(ctx.alloc());
             ctx.pipeline()
                .addBefore(ctx.name(), null, sslHandler)
                .addBefore(ctx.name(), null, new AlpnHandler(ctx));
@@ -55,9 +57,17 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
         }
     }
 
+    private SslContext sslCtx() throws SSLException {
+        if (client) {
+            return TlsUtil.ctxForServer(config, connectionInfo.getServerAddr().getHost());
+        } else {
+            return TlsUtil.ctxForClient(config);
+        }
+    }
+
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : TlsHandler(client={}) handlerRemoved", connectionInfo, client);
+        LOGGER.info("{} : handlerRemoved", connectionInfo.toString(client));
 
         flushPendings(ctx);
         ctx.flush();
@@ -76,7 +86,7 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        LOGGER.error("{} : TlsHandler(client={}) exceptionCaught, message is {}", connectionInfo, client, cause.getMessage());
+        LOGGER.error("{} : exceptionCaught, message is {}", connectionInfo.toString(client), cause.getMessage());
 
         outboundChannel.close();
         ctx.close();
@@ -94,22 +104,22 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     private void configHttp1(ChannelHandlerContext ctx) {
         if (client) {
-            Http1BackendHandler backendHandler = new Http1BackendHandler(config, connectionInfo, outboundChannel);
-            ctx.pipeline().replace(this, null, backendHandler);
-        } else {
             Http1FrontendHandler frontendHandler = new Http1FrontendHandler(config, connectionInfo, outboundChannel);
             ctx.pipeline().replace(this, null, frontendHandler);
+        } else {
+            Http1BackendHandler backendHandler = new Http1BackendHandler(config, connectionInfo, outboundChannel);
+            ctx.pipeline().replace(this, null, backendHandler);
         }
     }
 
     private void configHttp2(ChannelHandlerContext ctx) {
         if (client) {
-            Http2BackendHandler backendHandler = new Http2BackendHandler(config, connectionInfo, outboundChannel);
-            ctx.pipeline().addBefore(ctx.name(), null, backendHandler);
-            ctx.pipeline().remove(this);
-        } else {
             Http2FrontendHandler frontendHandler = new Http2FrontendHandler(config, connectionInfo, outboundChannel);
             ctx.pipeline().addBefore(ctx.name(), null, frontendHandler);
+            ctx.pipeline().remove(this);
+        } else {
+            Http2BackendHandler backendHandler = new Http2BackendHandler(config, connectionInfo, outboundChannel);
+            ctx.pipeline().addBefore(ctx.name(), null, backendHandler);
             ctx.pipeline().remove(this);
         }
     }

@@ -24,3 +24,6 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 
+# PEM
+key.pem
+server.pem

@@ -6,13 +6,15 @@ import java.util.List;
 public class NitmProxyConfig {
     private ProxyMode proxyMode;
 
+    // TLS related
     private List<Integer> httpsPorts;
-
     private String certFile;
-
     private String keyFile;
 
     private int maxContentLength;
+
+    private boolean clientHttp2;
+    private boolean serverHttp2;
 
     public NitmProxyConfig() {
         // Defaults
@@ -23,6 +25,9 @@ public class NitmProxyConfig {
         keyFile = "key.pem";
 
         maxContentLength = 1024 * 1024;
+
+        clientHttp2 = false;
+        serverHttp2 = false;
     }
 
     public ProxyMode getProxyMode() {
@@ -39,10 +44,6 @@ public class NitmProxyConfig {
 
     public void setHttpsPorts(List<Integer> httpsPorts) {
         this.httpsPorts = httpsPorts;
-    }
-
-    public boolean isTls(int port) {
-        return httpsPorts.contains(port);
     }
 
     public String getCertFile() {
@@ -67,5 +68,21 @@ public class NitmProxyConfig {
 
     public void setMaxContentLength(int maxContentLength) {
         this.maxContentLength = maxContentLength;
+    }
+
+    public boolean isClientHttp2() {
+        return clientHttp2;
+    }
+
+    public void setClientHttp2(boolean clientHttp2) {
+        this.clientHttp2 = clientHttp2;
+    }
+
+    public boolean isServerHttp2() {
+        return serverHttp2;
+    }
+
+    public void setServerHttp2(boolean serverHttp2) {
+        this.serverHttp2 = serverHttp2;
     }
 }

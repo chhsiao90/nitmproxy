@@ -19,11 +19,8 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.math.BigInteger;
 import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.time.Year;
 import java.time.ZoneId;
@@ -38,13 +35,11 @@ public class CertUtil {
             Date before = Date.from(Instant.now());
             Date after = Date.from(Year.now().plus(3, ChronoUnit.YEARS).atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
 
-            KeyPair keyPair = createKeyPair();
-
             X509CertificateHolder parent = readPemFromFile(parentCertFile);
-            PEMKeyPair parentPemKeyPair = readPemFromFile(keyFile);
-            KeyPair parentKeyPair = new JcaPEMKeyConverter()
+            PEMKeyPair pemKeyPair = readPemFromFile(keyFile);
+            KeyPair keyPair = new JcaPEMKeyConverter()
                     .setProvider(PROVIDER)
-                    .getKeyPair(parentPemKeyPair);
+                    .getKeyPair(pemKeyPair);
 
             X509v3CertificateBuilder x509 = new JcaX509v3CertificateBuilder(
                     parent.getSubject(),
@@ -55,7 +50,7 @@ public class CertUtil {
                     keyPair.getPublic());
 
             ContentSigner signer = new JcaContentSignerBuilder("SHA256WithRSAEncryption")
-                    .build(parentKeyPair.getPrivate());
+                    .build(keyPair.getPrivate());
 
             JcaX509CertificateConverter x509CertificateConverter = new JcaX509CertificateConverter()
                     .setProvider(PROVIDER);
@@ -67,12 +62,6 @@ public class CertUtil {
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
-    }
-
-    private static KeyPair createKeyPair() throws NoSuchAlgorithmException {
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(1024, new SecureRandom());
-        return keyGen.generateKeyPair();
     }
 
     public static <T> T readPemFromFile(String pemFile) throws IOException {

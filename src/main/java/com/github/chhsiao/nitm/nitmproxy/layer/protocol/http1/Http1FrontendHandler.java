@@ -4,6 +4,7 @@ import com.github.chhsiao.nitm.nitmproxy.Address;
 import com.github.chhsiao.nitm.nitmproxy.ConnectionInfo;
 import com.github.chhsiao.nitm.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao.nitm.nitmproxy.ProxyMode;
+import com.github.chhsiao.nitm.nitmproxy.event.OutboundChannelClosedEvent;
 import com.github.chhsiao.nitm.nitmproxy.layer.protocol.tls.TlsHandler;
 import com.google.common.base.Strings;
 import io.netty.bootstrap.Bootstrap;
@@ -14,6 +15,7 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -66,7 +68,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : Http1FrontendHandler handlerAdded", connectionInfo);
+        LOGGER.info("{} : handlerAdded", connectionInfo);
 
         httpServerCodec = new HttpServerCodec();
         httpObjectAggregator = new HttpObjectAggregator(config.getMaxContentLength());
@@ -77,12 +79,13 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : Http1FrontendHandler handlerRemoved", connectionInfo);
+        LOGGER.info("{} : handlerRemoved", connectionInfo);
 
         ctx.pipeline().remove(httpServerCodec).remove(httpObjectAggregator);
 
         if (outboundChannel != null) {
             outboundChannel.close();
+            outboundChannel = null;
         }
     }
 
@@ -104,6 +107,20 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
         }
     }
 
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        if (evt instanceof OutboundChannelClosedEvent) {
+            OutboundChannelClosedEvent event = (OutboundChannelClosedEvent) evt;
+            if (tunneled || connectionInfo.equals(event.getConnectionInfo())) {
+                ctx.close();
+            } else {
+                outboundChannel = null;
+            }
+        }
+
+        ctx.fireUserEventTriggered(evt);
+    }
+
     private void handleTunnelProxyConnection(ChannelHandlerContext ctx,
                                              HttpRequest request) throws Exception {
         Address address = resolveTunnelAddr(request.uri());
@@ -118,7 +135,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                             ctx.writeAndFlush(response);
 
                             ConnectionInfo newConnInfo = new ConnectionInfo(connectionInfo.getClientAddr(), address);
-                            TlsHandler tlsHandler = new TlsHandler(config, newConnInfo, future.channel(), false);
+                            TlsHandler tlsHandler = new TlsHandler(config, newConnInfo, future.channel(), true);
                             ctx.pipeline().replace(Http1FrontendHandler.this, null, tlsHandler);
                         }
                     }
@@ -137,8 +154,9 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
             outboundChannel = createOutboundChannel(ctx, serverAddr).channel();
         }
 
-        HttpRequest newRequest = new DefaultHttpRequest(
-                request.protocolVersion(), request.method(), fullPath.path, request.headers());
+        DefaultFullHttpRequest newRequest = new DefaultFullHttpRequest(
+                request.protocolVersion(), request.method(), fullPath.path);
+        newRequest.headers().set(request.headers());
 
         LOGGER.info("[Client ({})] => [Server ({})] : {}",
                     connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
@@ -184,7 +202,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                 .handler(new ChannelInitializer<Channel>() {
                     @Override
                     protected void initChannel(Channel ch) throws Exception {
-                        TlsHandler tlsHandler = new TlsHandler(config, connectionInfo, ctx.channel(), true);
+                        TlsHandler tlsHandler = new TlsHandler(config, connectionInfo, ctx.channel(), false);
                         ch.pipeline().addLast(tlsHandler);
                     }
                 });
