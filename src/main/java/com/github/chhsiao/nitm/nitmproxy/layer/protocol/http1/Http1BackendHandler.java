@@ -93,7 +93,7 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
                             connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
                             msg);
                 HttpRequest request = (HttpRequest) msg;
-                pendings.push(new RequestPromise(ReferenceCountUtil.retain(request), promise));
+                pendings.offer(new RequestPromise(ReferenceCountUtil.retain(request), promise));
                 next();
             } else {
                 ctx.write(msg, promise);

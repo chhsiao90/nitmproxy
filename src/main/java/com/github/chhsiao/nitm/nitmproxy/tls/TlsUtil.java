@@ -31,7 +31,7 @@ public class TlsUtil {
         return SslContextBuilder
                 .forServer(certificate.getKeyPair().getPrivate(), certificate.getChain())
                 .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE)
-                .applicationProtocolConfig(applicationProtocolConfig(config, config.isServerHttp2()))
+                .applicationProtocolConfig(applicationProtocolConfig(config, config.isClientHttp2()))
                 .build();
     }
 

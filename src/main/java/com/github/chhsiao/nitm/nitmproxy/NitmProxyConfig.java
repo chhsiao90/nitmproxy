@@ -26,8 +26,8 @@ public class NitmProxyConfig {
 
         maxContentLength = 1024 * 1024;
 
-        clientHttp2 = false;
-        serverHttp2 = false;
+        clientHttp2 = true;
+        serverHttp2 = true;
     }
 
     public ProxyMode getProxyMode() {

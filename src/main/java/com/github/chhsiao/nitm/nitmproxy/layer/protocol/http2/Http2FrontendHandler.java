@@ -3,19 +3,26 @@ package com.github.chhsiao.nitm.nitmproxy.layer.protocol.http2;
 import com.github.chhsiao.nitm.nitmproxy.ConnectionInfo;
 import com.github.chhsiao.nitm.nitmproxy.NitmProxyConfig;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http2.DefaultHttp2Connection;
 import io.netty.handler.codec.http2.DelegatingDecompressorFrameListener;
 import io.netty.handler.codec.http2.Http2Connection;
 import io.netty.handler.codec.http2.Http2FrameLogger;
+import io.netty.handler.codec.http2.HttpConversionUtil;
 import io.netty.handler.codec.http2.HttpToHttp2ConnectionHandlerBuilder;
 import io.netty.handler.codec.http2.InboundHttp2ToHttpAdapterBuilder;
 import io.netty.handler.logging.LogLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Deque;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.regex.Pattern;
 
 public class Http2FrontendHandler extends ChannelInboundHandlerAdapter {
@@ -60,13 +67,45 @@ public class Http2FrontendHandler extends ChannelInboundHandlerAdapter {
         outboundChannel.close();
     }
 
-    private class Http2Handler extends ChannelInboundHandlerAdapter {
+    private class Http2Handler extends ChannelDuplexHandler {
+        private Deque<String> streams = new ConcurrentLinkedDeque<>();
+
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             LOGGER.info("[Client ({})] => [Server ({})] : {}",
                         connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
                         msg);
+
+            if (msg instanceof HttpRequest) {
+                String streamId = ((HttpRequest) msg).headers().get(
+                        HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text());
+                if (streamId == null) {
+                    throw new IllegalStateException("No streamId");
+                }
+                streams.offer(streamId);
+            }
+
             outboundChannel.writeAndFlush(msg);
+        }
+
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            LOGGER.info("[Client ({})] <= [Server ({})] : {}",
+                        connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                        msg);
+
+            if (msg instanceof HttpResponse) {
+                HttpResponse response = (HttpResponse) msg;
+                if (!response.headers().contains(HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text())) {
+                    if (streams.isEmpty()) {
+                        throw new IllegalStateException("No active streams");
+                    }
+                    response.headers().add(HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text(),
+                                           streams.poll());
+                }
+            }
+
+            ctx.write(msg, promise);
         }
     }
 }

@@ -10,6 +10,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpMessage;
+import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http2.DefaultHttp2Connection;
 import io.netty.handler.codec.http2.DelegatingDecompressorFrameListener;
 import io.netty.handler.codec.http2.Http2Connection;
@@ -77,8 +78,11 @@ public class Http2BackendHandler extends ChannelInboundHandlerAdapter {
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-            if (msg instanceof HttpMessage) {
-                HttpMessage httpMessage = (HttpMessage) msg;
+            LOGGER.info("[Client ({})] => [Server ({})] : {}",
+                        connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                        msg);
+            if (msg instanceof HttpRequest) {
+                HttpMessage httpMessage = (HttpRequest) msg;
                 httpMessage.headers().add(ExtensionHeaderNames.SCHEME.text(), "https");
             }
 
