@@ -10,16 +10,20 @@ import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SupportedCipherSuiteFilter;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 
 import javax.net.ssl.SSLException;
 
 public class TlsUtil {
     public static SslContext ctxForClient(NitmProxyConfig config) throws SSLException {
-        return SslContextBuilder
+        SslContextBuilder builder = SslContextBuilder
                 .forClient()
                 .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE)
-                .applicationProtocolConfig(applicationProtocolConfig(config, config.isServerHttp2()))
-                .build();
+                .applicationProtocolConfig(applicationProtocolConfig(config, config.isServerHttp2()));
+        if (config.isInsecure()) {
+            builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
+        }
+        return builder.build();
     }
 
     public static SslContext ctxForServer(NitmProxyConfig config) throws SSLException {
