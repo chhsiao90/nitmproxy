@@ -1,4 +1,4 @@
-package com.github.chhsiao.nitm.nitmproxy;
+package com.github.chhsiaoninety.nitm.nitmproxy;
 
 public class Address {
     private String host;

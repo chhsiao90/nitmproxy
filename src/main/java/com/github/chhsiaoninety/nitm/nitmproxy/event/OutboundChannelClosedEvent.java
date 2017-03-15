@@ -1,6 +1,6 @@
-package com.github.chhsiao.nitm.nitmproxy.event;
+package com.github.chhsiaoninety.nitm.nitmproxy.event;
 
-import com.github.chhsiao.nitm.nitmproxy.ConnectionInfo;
+import com.github.chhsiaoninety.nitm.nitmproxy.ConnectionInfo;
 
 public class OutboundChannelClosedEvent {
     private ConnectionInfo connectionInfo;

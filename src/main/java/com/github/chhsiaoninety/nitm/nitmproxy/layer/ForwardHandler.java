@@ -1,4 +1,4 @@
-package com.github.chhsiao.nitm.nitmproxy.layer;
+package com.github.chhsiaoninety.nitm.nitmproxy.layer;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;

@@ -1,11 +1,11 @@
-package com.github.chhsiao.nitm.nitmproxy.layer.protocol.http1;
+package com.github.chhsiaoninety.nitm.nitmproxy.layer.protocol.http1;
 
-import com.github.chhsiao.nitm.nitmproxy.Address;
-import com.github.chhsiao.nitm.nitmproxy.ConnectionInfo;
-import com.github.chhsiao.nitm.nitmproxy.NitmProxyConfig;
-import com.github.chhsiao.nitm.nitmproxy.ProxyMode;
-import com.github.chhsiao.nitm.nitmproxy.event.OutboundChannelClosedEvent;
-import com.github.chhsiao.nitm.nitmproxy.layer.protocol.tls.TlsHandler;
+import com.github.chhsiaoninety.nitm.nitmproxy.Address;
+import com.github.chhsiaoninety.nitm.nitmproxy.ConnectionInfo;
+import com.github.chhsiaoninety.nitm.nitmproxy.NitmProxyConfig;
+import com.github.chhsiaoninety.nitm.nitmproxy.ProxyMode;
+import com.github.chhsiaoninety.nitm.nitmproxy.event.OutboundChannelClosedEvent;
+import com.github.chhsiaoninety.nitm.nitmproxy.layer.protocol.tls.TlsHandler;
 import com.google.common.base.Strings;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -16,7 +16,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpMethod;

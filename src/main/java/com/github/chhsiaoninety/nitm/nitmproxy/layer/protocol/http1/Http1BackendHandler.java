@@ -1,8 +1,8 @@
-package com.github.chhsiao.nitm.nitmproxy.layer.protocol.http1;
+package com.github.chhsiaoninety.nitm.nitmproxy.layer.protocol.http1;
 
-import com.github.chhsiao.nitm.nitmproxy.ConnectionInfo;
-import com.github.chhsiao.nitm.nitmproxy.NitmProxyConfig;
-import com.github.chhsiao.nitm.nitmproxy.event.OutboundChannelClosedEvent;
+import com.github.chhsiaoninety.nitm.nitmproxy.ConnectionInfo;
+import com.github.chhsiaoninety.nitm.nitmproxy.NitmProxyConfig;
+import com.github.chhsiaoninety.nitm.nitmproxy.event.OutboundChannelClosedEvent;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;

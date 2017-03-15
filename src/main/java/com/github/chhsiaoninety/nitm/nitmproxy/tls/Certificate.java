@@ -1,4 +1,4 @@
-package com.github.chhsiao.nitm.nitmproxy.tls;
+package com.github.chhsiaoninety.nitm.nitmproxy.tls;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;

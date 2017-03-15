@@ -1,4 +1,4 @@
-package com.github.chhsiao.nitm.nitmproxy;
+package com.github.chhsiaoninety.nitm.nitmproxy;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;

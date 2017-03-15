@@ -1,7 +1,7 @@
-package com.github.chhsiao.nitm.nitmproxy;
+package com.github.chhsiaoninety.nitm.nitmproxy;
 
-import com.github.chhsiao.nitm.nitmproxy.layer.proxy.HttpProxyHandler;
-import com.github.chhsiao.nitm.nitmproxy.layer.proxy.SocksProxyHandler;
+import com.github.chhsiaoninety.nitm.nitmproxy.layer.proxy.HttpProxyHandler;
+import com.github.chhsiaoninety.nitm.nitmproxy.layer.proxy.SocksProxyHandler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;

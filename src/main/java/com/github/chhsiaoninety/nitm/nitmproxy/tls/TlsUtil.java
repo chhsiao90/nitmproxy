@@ -1,6 +1,6 @@
-package com.github.chhsiao.nitm.nitmproxy.tls;
+package com.github.chhsiaoninety.nitm.nitmproxy.tls;
 
-import com.github.chhsiao.nitm.nitmproxy.NitmProxyConfig;
+import com.github.chhsiaoninety.nitm.nitmproxy.NitmProxyConfig;
 import io.netty.handler.codec.http2.Http2SecurityUtil;
 import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.ApplicationProtocolConfig.Protocol;
