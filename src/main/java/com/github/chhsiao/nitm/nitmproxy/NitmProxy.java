@@ -60,30 +60,35 @@ public class NitmProxy {
         options.addOption(
                 Option.builder("m")
                       .longOpt("mode")
+                      .hasArg()
                       .argName("MODE")
                       .desc("proxy mode(HTTP, SOCKS), default: HTTP")
                       .build());
         options.addOption(
                 Option.builder("h")
                       .longOpt("host")
+                      .hasArg()
                       .argName("HOST")
                       .desc("listening host, default: 127.0.0.1")
                       .build());
         options.addOption(
                 Option.builder("p")
                       .longOpt("port")
+                      .hasArg()
                       .argName("PORT")
                       .desc("listening port, default: 8080")
                       .build());
         options.addOption(
-                Option.builder("cert")
+                Option.builder()
                       .longOpt("cert")
+                      .hasArg()
                       .argName("CERTIFICATE")
                       .desc("x509 certificate used by server(*.pem), default: server.pem")
                       .build());
         options.addOption(
-                Option.builder("key")
+                Option.builder()
                       .longOpt("key")
+                      .hasArg()
                       .argName("KEY")
                       .desc("key used by server(*.pem), default: key.pem")
                       .build());
@@ -110,7 +115,7 @@ public class NitmProxy {
         try {
             commandLine = parser.parse(options, args);
         } catch (ParseException e) {
-            new HelpFormatter().printHelp("nitm", options, true);
+            new HelpFormatter().printHelp("nitmproxy", options, true);
             System.exit(-1);
         }
 

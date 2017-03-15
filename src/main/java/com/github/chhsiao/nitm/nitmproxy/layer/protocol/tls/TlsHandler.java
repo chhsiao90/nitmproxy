@@ -115,12 +115,10 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
     private void configHttp2(ChannelHandlerContext ctx) {
         if (client) {
             Http2FrontendHandler frontendHandler = new Http2FrontendHandler(config, connectionInfo, outboundChannel);
-            ctx.pipeline().addBefore(ctx.name(), null, frontendHandler);
-            ctx.pipeline().remove(this);
+            ctx.pipeline().replace(this, null, frontendHandler);
         } else {
             Http2BackendHandler backendHandler = new Http2BackendHandler(config, connectionInfo, outboundChannel);
-            ctx.pipeline().addBefore(ctx.name(), null, backendHandler);
-            ctx.pipeline().remove(this);
+            ctx.pipeline().replace(this, null, backendHandler);
         }
     }
 

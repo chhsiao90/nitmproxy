@@ -18,11 +18,10 @@
     <logback.version>1.2.1</logback.version>
     <bouncycastle.version>1.54</bouncycastle.version>
     <commons-cli.version>1.3.1</commons-cli.version>
-
     <jetty.alpnAgent.version>2.0.6</jetty.alpnAgent.version>
     <jetty.alpnAgent.path>"${settings.localRepository}"/org/mortbay/jetty/alpn/jetty-alpn-agent/${jetty.alpnAgent.version}/jetty-alpn-agent-${jetty.alpnAgent.version}.jar</jetty.alpnAgent.path>
     <argLine.alpnAgent>-javaagent:${jetty.alpnAgent.path}</argLine.alpnAgent>
-
+    <argLine.leak>-D_</argLine.leak>
     <main.class>com.github.chhsiao.nitm.nitmproxy.NitmProxy</main.class>
   </properties>
 
@@ -36,7 +35,9 @@
           <commandlineArgs>
             ${argLine.alpnAgent}
             -classpath %classpath
+            ${argLine.leak}
             ${main.class}
+            ${exec.args}
           </commandlineArgs>
         </configuration>
       </plugin>
@@ -49,6 +50,14 @@
       </extension>
     </extensions>
   </build>
+  <profiles>
+    <profile>
+      <id>leak</id>
+      <properties>
+        <argLine.leak>-Dio.netty.leakDetectionLevel=paranoid -Dio.netty.leakDetection.maxRecords=32</argLine.leak>
+      </properties>
+    </profile>
+  </profiles>
   <dependencies>
     <dependency>
       <groupId>io.netty</groupId>
