@@ -16,9 +16,16 @@ public class NitmProxyInitializer extends ChannelInitializer<Channel> {
     private static final Logger LOGGER = LoggerFactory.getLogger(NitmProxyInitializer.class);
 
     private NitmProxyConfig config;
+    private HandlerProvider handlerProvider;
 
     public NitmProxyInitializer(NitmProxyConfig config) {
+        this(config, new HandlerProvider(config));
+    }
+
+    public NitmProxyInitializer(NitmProxyConfig config,
+                                HandlerProvider handlerProvider) {
         this.config = config;
+        this.handlerProvider = handlerProvider;
     }
 
     @Override
@@ -39,9 +46,9 @@ public class NitmProxyInitializer extends ChannelInitializer<Channel> {
     private ChannelHandler proxyHandler(Address clientAddress) {
         switch (config.getProxyMode()) {
         case HTTP:
-            return new HttpProxyHandler(config, new ConnectionInfo(clientAddress));
+            return new HttpProxyHandler(handlerProvider, config, new ConnectionInfo(clientAddress));
         case SOCKS:
-            return new SocksProxyHandler(config, new ConnectionInfo(clientAddress));
+            return new SocksProxyHandler(handlerProvider, config, new ConnectionInfo(clientAddress));
         default:
             throw new IllegalStateException("No proxy mode available: " + config.getProxyMode());
         }

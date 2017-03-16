@@ -2,10 +2,7 @@ package com.github.chhsiaoninety.nitmproxy.layer.protocol.tls;
 
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.http1.Http1BackendHandler;
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.http1.Http1FrontendHandler;
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.http2.Http2BackendHandler;
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.http2.Http2FrontendHandler;
+import com.github.chhsiaoninety.nitmproxy.HandlerProvider;
 import com.github.chhsiaoninety.nitmproxy.tls.TlsUtil;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -26,6 +23,7 @@ import java.util.List;
 public class TlsHandler extends ChannelOutboundHandlerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(TlsHandler.class);
 
+    private HandlerProvider handlerProvider;
     private NitmProxyConfig config;
     private ConnectionInfo connectionInfo;
     private Channel outboundChannel;
@@ -33,8 +31,10 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     private final List<Object> pendings;
 
-    public TlsHandler(NitmProxyConfig config, ConnectionInfo connectionInfo,
-                      Channel outboundChannel, boolean client) {
+    public TlsHandler(HandlerProvider handlerProvider, NitmProxyConfig config,
+                      ConnectionInfo connectionInfo, Channel outboundChannel,
+                      boolean client) {
+        this.handlerProvider = handlerProvider;
         this.config = config;
         this.connectionInfo = connectionInfo;
         this.outboundChannel = outboundChannel;
@@ -104,21 +104,17 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     private void configHttp1(ChannelHandlerContext ctx) {
         if (client) {
-            Http1FrontendHandler frontendHandler = new Http1FrontendHandler(config, connectionInfo, outboundChannel);
-            ctx.pipeline().replace(this, null, frontendHandler);
+            ctx.pipeline().replace(this, null, handlerProvider.http1FrontendHandler(connectionInfo, outboundChannel));
         } else {
-            Http1BackendHandler backendHandler = new Http1BackendHandler(config, connectionInfo, outboundChannel);
-            ctx.pipeline().replace(this, null, backendHandler);
+            ctx.pipeline().replace(this, null, handlerProvider.http1BackendHandler(connectionInfo, outboundChannel));
         }
     }
 
     private void configHttp2(ChannelHandlerContext ctx) {
         if (client) {
-            Http2FrontendHandler frontendHandler = new Http2FrontendHandler(config, connectionInfo, outboundChannel);
-            ctx.pipeline().replace(this, null, frontendHandler);
+            ctx.pipeline().replace(this, null, handlerProvider.http2FrontendHandler(connectionInfo, outboundChannel));
         } else {
-            Http2BackendHandler backendHandler = new Http2BackendHandler(config, connectionInfo, outboundChannel);
-            ctx.pipeline().replace(this, null, backendHandler);
+            ctx.pipeline().replace(this, null, handlerProvider.http2BackendHandler(connectionInfo, outboundChannel));
         }
     }
 

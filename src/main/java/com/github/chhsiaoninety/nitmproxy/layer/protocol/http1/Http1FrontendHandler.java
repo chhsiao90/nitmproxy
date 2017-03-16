@@ -5,7 +5,7 @@ import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
 import com.github.chhsiaoninety.nitmproxy.ProxyMode;
 import com.github.chhsiaoninety.nitmproxy.event.OutboundChannelClosedEvent;
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.tls.TlsHandler;
+import com.github.chhsiaoninety.nitmproxy.HandlerProvider;
 import com.google.common.base.Strings;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -39,6 +39,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Http1FrontendHandler.class);
 
+    private HandlerProvider handlerProvider;
     private NitmProxyConfig config;
     private ConnectionInfo connectionInfo;
     private boolean tunneled;
@@ -47,17 +48,20 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
     private ChannelHandler httpServerCodec;
     private ChannelHandler httpObjectAggregator;
 
-    public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo) {
-        this(config, connectionInfo, null, false);
+    public Http1FrontendHandler(HandlerProvider handlerProvider, NitmProxyConfig config,
+                                ConnectionInfo connectionInfo) {
+        this(handlerProvider, config, connectionInfo, null, false);
     }
 
-    public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo, Channel outboundChannel) {
-        this(config, connectionInfo, outboundChannel, true);
+    public Http1FrontendHandler(HandlerProvider handlerProvider, NitmProxyConfig config,
+                                ConnectionInfo connectionInfo, Channel outboundChannel) {
+        this(handlerProvider, config, connectionInfo, outboundChannel, true);
     }
 
-    public Http1FrontendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo, Channel outboundChannel,
-                                boolean tunneled) {
+    private Http1FrontendHandler(HandlerProvider handlerProvider, NitmProxyConfig config, ConnectionInfo connectionInfo,
+                                Channel outboundChannel, boolean tunneled) {
         super();
+        this.handlerProvider = handlerProvider;
         this.config = config;
         this.connectionInfo = connectionInfo;
         this.outboundChannel = outboundChannel;
@@ -134,8 +138,8 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                             ctx.writeAndFlush(response);
 
                             ConnectionInfo newConnInfo = new ConnectionInfo(connectionInfo.getClientAddr(), address);
-                            TlsHandler tlsHandler = new TlsHandler(config, newConnInfo, future.channel(), true);
-                            ctx.pipeline().replace(Http1FrontendHandler.this, null, tlsHandler);
+                            ctx.pipeline().replace(Http1FrontendHandler.this, null,
+                                                   handlerProvider.frontendTlsHandler(newConnInfo, future.channel()));
                         }
                     }
                 });
@@ -201,8 +205,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                 .handler(new ChannelInitializer<Channel>() {
                     @Override
                     protected void initChannel(Channel ch) throws Exception {
-                        TlsHandler tlsHandler = new TlsHandler(config, connectionInfo, ctx.channel(), false);
-                        ch.pipeline().addLast(tlsHandler);
+                        ch.pipeline().addLast(handlerProvider.backendTlsHandler(connectionInfo, ctx.channel()));
                     }
                 });
         ChannelFuture future = bootstrap.connect(serverAddr.getHost(), serverAddr.getPort());

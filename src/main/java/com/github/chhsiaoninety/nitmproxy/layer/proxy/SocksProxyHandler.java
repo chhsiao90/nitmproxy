@@ -3,7 +3,7 @@ package com.github.chhsiaoninety.nitmproxy.layer.proxy;
 import com.github.chhsiaoninety.nitmproxy.Address;
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.tls.TlsHandler;
+import com.github.chhsiaoninety.nitmproxy.HandlerProvider;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -40,12 +40,15 @@ import java.util.List;
 public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage> {
     private static final Logger LOGGER = LoggerFactory.getLogger(SocksProxyHandler.class);
 
+    private HandlerProvider handlerProvider;
     private NitmProxyConfig config;
     private ConnectionInfo connectionInfo;
 
     private List<ChannelHandler> handlers;
 
-    public SocksProxyHandler(NitmProxyConfig config, ConnectionInfo connectionInfo) {
+    public SocksProxyHandler(HandlerProvider handlerProvider, NitmProxyConfig config,
+                             ConnectionInfo connectionInfo) {
+        this.handlerProvider = handlerProvider;
         this.config = config;
         this.connectionInfo = connectionInfo;
 
@@ -163,9 +166,8 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
     }
 
     private void onServerConnected(ChannelHandlerContext ctx, ConnectionInfo connectionInfo, Channel outboundChannel) {
-        TlsHandler tlsHandler = new TlsHandler(config, connectionInfo, outboundChannel, true);
-        ctx.pipeline()
-           .replace(SocksProxyHandler.this, null, tlsHandler);
+        ctx.pipeline().replace(SocksProxyHandler.this, null,
+                               handlerProvider.frontendTlsHandler(connectionInfo, outboundChannel));
     }
 
     private ChannelFuture createServerChannel(ChannelHandlerContext ctx, Address serverAddr) {
@@ -177,8 +179,7 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
                 .handler(new ChannelInitializer<Channel>() {
                     @Override
                     protected void initChannel(Channel channel) throws Exception {
-                        TlsHandler tlsHandler = new TlsHandler(config, newConnectionInfo, ctx.channel(), false);
-                        channel.pipeline().addLast(tlsHandler);
+                        channel.pipeline().addLast(handlerProvider.backendTlsHandler(newConnectionInfo, ctx.channel()));
                     }
                 });
         return bootstrap.connect(serverAddr.getHost(), serverAddr.getPort());
