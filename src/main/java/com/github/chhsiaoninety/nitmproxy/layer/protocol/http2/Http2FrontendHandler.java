@@ -8,6 +8,8 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http2.DefaultHttp2Connection;
@@ -76,13 +78,15 @@ public class Http2FrontendHandler extends ChannelInboundHandlerAdapter {
                         connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
                         msg);
 
-            if (msg instanceof HttpRequest) {
+            if (msg instanceof FullHttpRequest) {
                 String streamId = ((HttpRequest) msg).headers().get(
                         HttpConversionUtil.ExtensionHeaderNames.STREAM_ID.text());
                 if (streamId == null) {
                     throw new IllegalStateException("No streamId");
                 }
                 streams.offer(streamId);
+            } else if (msg instanceof HttpObject) {
+                throw new IllegalStateException("Cannot handle message: " + msg.getClass());
             }
 
             outboundChannel.writeAndFlush(msg);

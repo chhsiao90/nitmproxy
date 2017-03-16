@@ -1,13 +1,20 @@
 package com.github.chhsiaoninety.nitmproxy;
 
+import com.google.common.base.Joiner;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class HttpObjectUtil {
     private HttpObjectUtil() {
@@ -26,12 +33,36 @@ public class HttpObjectUtil {
     }
 
     public static ByteBuf requestBytes() {
-        return Unpooled.buffer().writeBytes(
-                "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n".getBytes());
+        return requestBytes(request());
+    }
+
+    public static ByteBuf requestBytes(HttpRequest request) {
+        String req = String.format("%s %s %s\r\n%s\r\n\r\n",
+                                   request.method(),
+                                   request.uri(),
+                                   request.protocolVersion(),
+                                   headersString(request.headers()));
+        return Unpooled.buffer().writeBytes(req.getBytes());
+    }
+
+    private static String headersString(HttpHeaders headers) {
+        List<String> headerStrings = headers.entries().stream()
+                                            .map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue()))
+                                            .collect(Collectors.toList());
+        return Joiner.on("\r\n").join(headerStrings);
     }
 
     public static ByteBuf responseBytes() {
         return Unpooled.buffer().writeBytes(
                 "HTTP/1.1 200 OK\r\n\r\n".getBytes());
+    }
+
+    public static ByteBuf requestBytes(HttpResponse response) {
+        String resp = String.format("%s %s %s\r\n%s\r\n\r\n",
+                                   response.protocolVersion(),
+                                   response.status().codeAsText(),
+                                   response.status().reasonPhrase(),
+                                   headersString(response.headers()));
+        return Unpooled.buffer().writeBytes(resp.getBytes());
     }
 }

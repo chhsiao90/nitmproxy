@@ -8,7 +8,9 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpMessage;
+import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http2.DefaultHttp2Connection;
 import io.netty.handler.codec.http2.DelegatingDecompressorFrameListener;
@@ -80,9 +82,11 @@ public class Http2BackendHandler extends ChannelInboundHandlerAdapter {
             LOGGER.info("[Client ({})] => [Server ({})] : {}",
                         connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
                         msg);
-            if (msg instanceof HttpRequest) {
+            if (msg instanceof FullHttpRequest) {
                 HttpMessage httpMessage = (HttpRequest) msg;
                 httpMessage.headers().add(ExtensionHeaderNames.SCHEME.text(), "https");
+            } else if (msg instanceof HttpObject) {
+                throw new IllegalStateException("Cannot handle message: " + msg.getClass());
             }
 
             ctx.writeAndFlush(msg, promise);

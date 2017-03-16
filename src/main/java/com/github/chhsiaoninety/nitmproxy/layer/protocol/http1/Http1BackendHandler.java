@@ -8,6 +8,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
@@ -88,13 +89,15 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-            if (msg instanceof HttpRequest) {
+            if (msg instanceof FullHttpRequest) {
                 LOGGER.info("[Client ({})] => [Server ({})] : (PENDING) {}",
                             connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
                             msg);
                 HttpRequest request = (HttpRequest) msg;
                 pendings.offer(new RequestPromise(request, promise));
                 next();
+            } else if (msg instanceof HttpObject) {
+                throw new IllegalStateException("Cannot handled message: " + msg.getClass());
             } else {
                 ctx.write(msg, promise);
             }
