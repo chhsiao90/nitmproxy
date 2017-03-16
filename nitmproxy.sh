@@ -1,1 +1,1 @@
-mvn exec:exec -Dexec.args="$*" $JAVA_OPTS
+mvn exec:exec -Dmain.args="$*" $JAVA_OPTS
