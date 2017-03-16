@@ -3,7 +3,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.github.chhsiaoninety.nitm</groupId>
+  <groupId>com.github.chhsiaoninety</groupId>
   <artifactId>nitmproxy</artifactId>
   <version>1.0-SNAPSHOT</version>
   <properties>
@@ -18,11 +18,14 @@
     <logback.version>1.2.1</logback.version>
     <bouncycastle.version>1.54</bouncycastle.version>
     <commons-cli.version>1.3.1</commons-cli.version>
+    <junit.version>4.12</junit.version>
+    <mockito.version>1.10.19</mockito.version>
     <jetty.alpnAgent.version>2.0.6</jetty.alpnAgent.version>
     <jetty.alpnAgent.path>"${settings.localRepository}"/org/mortbay/jetty/alpn/jetty-alpn-agent/${jetty.alpnAgent.version}/jetty-alpn-agent-${jetty.alpnAgent.version}.jar</jetty.alpnAgent.path>
     <argLine.alpnAgent>-javaagent:${jetty.alpnAgent.path}</argLine.alpnAgent>
     <argLine.leak>-D_</argLine.leak>
-    <main.class>com.github.chhsiaoninety.nitm.nitmproxy.NitmProxy</main.class>
+    <argLine.coverage>-D_</argLine.coverage>
+    <main.class>com.github.chhsiaoninety.nitmproxy.NitmProxy</main.class>
   </properties>
 
   <build>
@@ -37,8 +40,14 @@
             -classpath %classpath
             ${argLine.leak}
             ${main.class}
-            ${exec.args}
+            ${main.args}
           </commandlineArgs>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <argLine>${argLine.leak} ${argLine.alpnAgent} ${argLine.coverage}</argLine>
         </configuration>
       </plugin>
     </plugins>
@@ -56,6 +65,32 @@
       <properties>
         <argLine.leak>-Dio.netty.leakDetectionLevel=paranoid -Dio.netty.leakDetection.maxRecords=32</argLine.leak>
       </properties>
+    </profile>
+    <profile>
+      <id>coverage</id>
+      <properties>
+        <argLine.coverage>${jacoco.argLine}</argLine.coverage>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>0.7.7.201606060606</version>
+            <executions>
+              <execution>
+                <id>jacoco-prepare-agent</id>
+                <goals>
+                  <goal>prepare-agent</goal>
+                </goals>
+                <configuration>
+                  <propertyName>jacoco.argLine</propertyName>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
   </profiles>
   <dependencies>
@@ -88,6 +123,18 @@
       <groupId>commons-cli</groupId>
       <artifactId>commons-cli</artifactId>
       <version>${commons-cli.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
