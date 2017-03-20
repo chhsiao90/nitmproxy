@@ -1,4 +1,4 @@
-package com.github.chhsiaoninety.nitmproxy.layer.protocol.http1;
+package com.github.chhsiaoninety.nitmproxy.handler.protocol.http1;
 
 import com.github.chhsiaoninety.nitmproxy.Address;
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;

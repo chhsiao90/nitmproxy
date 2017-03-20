@@ -2,8 +2,8 @@ package com.github.chhsiaoninety.nitmproxy;
 
 import com.github.chhsiaoninety.nitmproxy.channel.BackendChannelBootstrap;
 import com.github.chhsiaoninety.nitmproxy.enums.Handler;
-import com.github.chhsiaoninety.nitmproxy.layer.proxy.HttpProxyHandler;
-import com.github.chhsiaoninety.nitmproxy.layer.proxy.SocksProxyHandler;
+import com.github.chhsiaoninety.nitmproxy.handler.proxy.HttpProxyHandler;
+import com.github.chhsiaoninety.nitmproxy.handler.proxy.SocksProxyHandler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;

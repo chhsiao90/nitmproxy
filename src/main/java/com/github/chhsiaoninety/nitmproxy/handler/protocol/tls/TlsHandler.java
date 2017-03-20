@@ -1,4 +1,4 @@
-package com.github.chhsiaoninety.nitmproxy.layer.protocol.tls;
+package com.github.chhsiaoninety.nitmproxy.handler.protocol.tls;
 
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;

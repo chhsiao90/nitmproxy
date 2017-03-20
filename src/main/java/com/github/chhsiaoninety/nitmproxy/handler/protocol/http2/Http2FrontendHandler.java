@@ -1,4 +1,4 @@
-package com.github.chhsiaoninety.nitmproxy.layer.protocol.http2;
+package com.github.chhsiaoninety.nitmproxy.handler.protocol.http2;
 
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;

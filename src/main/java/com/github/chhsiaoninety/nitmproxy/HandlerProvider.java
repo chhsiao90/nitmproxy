@@ -1,10 +1,10 @@
 package com.github.chhsiaoninety.nitmproxy;
 
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.http1.Http1BackendHandler;
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.http1.Http1FrontendHandler;
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.http2.Http2BackendHandler;
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.http2.Http2FrontendHandler;
-import com.github.chhsiaoninety.nitmproxy.layer.protocol.tls.TlsHandler;
+import com.github.chhsiaoninety.nitmproxy.handler.protocol.http1.Http1BackendHandler;
+import com.github.chhsiaoninety.nitmproxy.handler.protocol.http1.Http1FrontendHandler;
+import com.github.chhsiaoninety.nitmproxy.handler.protocol.http2.Http2BackendHandler;
+import com.github.chhsiaoninety.nitmproxy.handler.protocol.http2.Http2FrontendHandler;
+import com.github.chhsiaoninety.nitmproxy.handler.protocol.tls.TlsHandler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 

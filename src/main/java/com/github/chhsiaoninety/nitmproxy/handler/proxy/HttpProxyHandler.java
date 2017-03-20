@@ -1,4 +1,4 @@
-package com.github.chhsiaoninety.nitmproxy.layer.proxy;
+package com.github.chhsiaoninety.nitmproxy.handler.proxy;
 
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
