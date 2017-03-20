@@ -1,5 +1,6 @@
 package com.github.chhsiaoninety.nitmproxy;
 
+import com.github.chhsiaoninety.nitmproxy.enums.ProxyMode;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.nio.NioEventLoopGroup;

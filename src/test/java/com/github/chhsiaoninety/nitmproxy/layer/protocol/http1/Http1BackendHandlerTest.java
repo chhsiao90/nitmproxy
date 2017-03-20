@@ -3,6 +3,7 @@ package com.github.chhsiaoninety.nitmproxy.layer.protocol.http1;
 import com.github.chhsiaoninety.nitmproxy.Address;
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
+import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
 import com.github.chhsiaoninety.nitmproxy.event.OutboundChannelClosedEvent;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -21,8 +22,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 public class Http1BackendHandlerTest {
+    private NitmProxyMaster master;
+
     private Http1BackendHandler handler;
 
     private EmbeddedChannel inboundChannel;
@@ -31,12 +35,15 @@ public class Http1BackendHandlerTest {
 
     @Before
     public void setUp() throws Exception {
+        master = mock(NitmProxyMaster.class);
+        when(master.config()).thenReturn(new NitmProxyConfig());
+
         inboundChannel = new EmbeddedChannel();
 
         outboundChannel = new EmbeddedChannel();
 
         handler = new Http1BackendHandler(
-                new NitmProxyConfig(),
+                master,
                 connectionInfo(),
                 outboundChannel);
     }

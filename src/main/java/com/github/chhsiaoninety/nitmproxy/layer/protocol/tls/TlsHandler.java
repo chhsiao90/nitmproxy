@@ -1,8 +1,8 @@
 package com.github.chhsiaoninety.nitmproxy.layer.protocol.tls;
 
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
-import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
-import com.github.chhsiaoninety.nitmproxy.HandlerProvider;
+import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
+import com.github.chhsiaoninety.nitmproxy.enums.Handler;
 import com.github.chhsiaoninety.nitmproxy.tls.TlsUtil;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -23,19 +23,17 @@ import java.util.List;
 public class TlsHandler extends ChannelOutboundHandlerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(TlsHandler.class);
 
-    private HandlerProvider handlerProvider;
-    private NitmProxyConfig config;
+    private NitmProxyMaster master;
     private ConnectionInfo connectionInfo;
     private Channel outboundChannel;
     private boolean client;
 
     private final List<Object> pendings;
 
-    public TlsHandler(HandlerProvider handlerProvider, NitmProxyConfig config,
+    public TlsHandler(NitmProxyMaster master,
                       ConnectionInfo connectionInfo, Channel outboundChannel,
                       boolean client) {
-        this.handlerProvider = handlerProvider;
-        this.config = config;
+        this.master = master;
         this.connectionInfo = connectionInfo;
         this.outboundChannel = outboundChannel;
         this.client = client;
@@ -47,7 +45,7 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         LOGGER.info("{} : handlerAdded", connectionInfo.toString(client));
 
-        if (config.getHttpsPorts().contains(connectionInfo.getServerAddr().getPort())) {
+        if (master.config().getHttpsPorts().contains(connectionInfo.getServerAddr().getPort())) {
             SslHandler sslHandler = sslCtx().newHandler(ctx.alloc());
             ctx.pipeline()
                .addBefore(ctx.name(), null, sslHandler)
@@ -59,9 +57,9 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     private SslContext sslCtx() throws SSLException {
         if (client) {
-            return TlsUtil.ctxForServer(config, connectionInfo.getServerAddr().getHost());
+            return TlsUtil.ctxForServer(master.config(), connectionInfo.getServerAddr().getHost());
         } else {
-            return TlsUtil.ctxForClient(config);
+            return TlsUtil.ctxForClient(master.config());
         }
     }
 
@@ -104,17 +102,17 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     private void configHttp1(ChannelHandlerContext ctx) {
         if (client) {
-            ctx.pipeline().replace(this, null, handlerProvider.http1FrontendHandler(connectionInfo, outboundChannel));
+            ctx.pipeline().replace(this, null, master.handler(Handler.HTTP1_FRONTEND, connectionInfo, outboundChannel));
         } else {
-            ctx.pipeline().replace(this, null, handlerProvider.http1BackendHandler(connectionInfo, outboundChannel));
+            ctx.pipeline().replace(this, null, master.handler(Handler.HTTP1_BACKEND, connectionInfo, outboundChannel));
         }
     }
 
     private void configHttp2(ChannelHandlerContext ctx) {
         if (client) {
-            ctx.pipeline().replace(this, null, handlerProvider.http2FrontendHandler(connectionInfo, outboundChannel));
+            ctx.pipeline().replace(this, null, master.handler(Handler.HTTP2_FRONTEND, connectionInfo, outboundChannel));
         } else {
-            ctx.pipeline().replace(this, null, handlerProvider.http2BackendHandler(connectionInfo, outboundChannel));
+            ctx.pipeline().replace(this, null, master.handler(Handler.HTTP2_BACKEND, connectionInfo, outboundChannel));
         }
     }
 

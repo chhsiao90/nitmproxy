@@ -1,5 +1,6 @@
 package com.github.chhsiaoninety.nitmproxy;
 
+import com.github.chhsiaoninety.nitmproxy.enums.ProxyMode;
 import com.google.common.base.Joiner;
 
 import java.util.Arrays;

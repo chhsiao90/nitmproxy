@@ -1,4 +1,4 @@
-package com.github.chhsiaoninety.nitmproxy;
+package com.github.chhsiaoninety.nitmproxy.enums;
 
 public enum ProxyMode {
     SOCKS,

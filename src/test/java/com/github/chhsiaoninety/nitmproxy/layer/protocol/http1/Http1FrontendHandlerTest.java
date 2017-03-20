@@ -3,7 +3,8 @@ package com.github.chhsiaoninety.nitmproxy.layer.protocol.http1;
 import com.github.chhsiaoninety.nitmproxy.Address;
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
-import com.github.chhsiaoninety.nitmproxy.HandlerProvider;
+import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
@@ -19,7 +20,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class Http1FrontendHandlerTest {
-    private HandlerProvider handlerProvider;
+    private NitmProxyMaster master;
 
     private EmbeddedChannel inboundChannel;
 
@@ -27,7 +28,10 @@ public class Http1FrontendHandlerTest {
 
     @Before
     public void setUp() throws Exception {
-        handlerProvider = mock(HandlerProvider.class);
+        master = mock(NitmProxyMaster.class);
+        when(master.config()).thenReturn(new NitmProxyConfig());
+        when(master.connect(any(), any(), any())).then(
+                invocationOnMock -> new EmbeddedChannel((ChannelHandler) invocationOnMock.getArguments()[2]));
 
         inboundChannel = new EmbeddedChannel();
 
@@ -76,11 +80,11 @@ public class Http1FrontendHandlerTest {
     }
 
     private Http1FrontendHandler httpProxyHandler() {
-        return new Http1FrontendHandler(handlerProvider, new NitmProxyConfig(), connectionInfo());
+        return new Http1FrontendHandler(master, connectionInfo());
     }
 
     private Http1FrontendHandler tunneledHandler() {
-        return new Http1FrontendHandler(handlerProvider, new NitmProxyConfig(), connectionInfo(), outboundChannel);
+        return new Http1FrontendHandler(master, connectionInfo(), outboundChannel);
     }
 
     private static ConnectionInfo connectionInfo() {

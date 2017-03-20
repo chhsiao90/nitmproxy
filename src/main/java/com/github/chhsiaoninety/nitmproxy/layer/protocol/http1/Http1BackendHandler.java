@@ -1,7 +1,7 @@
 package com.github.chhsiaoninety.nitmproxy.layer.protocol.http1;
 
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
-import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
+import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
 import com.github.chhsiaoninety.nitmproxy.event.OutboundChannelClosedEvent;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -24,7 +24,9 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Http1BackendHandler.class);
 
-    private NitmProxyConfig config;
+    @SuppressWarnings("all")
+    private NitmProxyMaster master;
+
     private ConnectionInfo connectionInfo;
     private Channel outboundChannel;
 
@@ -32,9 +34,9 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
 
     private volatile HttpRequest currentRequest;
 
-    public Http1BackendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo,
+    public Http1BackendHandler(NitmProxyMaster master, ConnectionInfo connectionInfo,
                                Channel outboundChannel) {
-        this.config = config;
+        this.master = master;
         this.connectionInfo = connectionInfo;
         this.outboundChannel = outboundChannel;
 

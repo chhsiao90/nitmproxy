@@ -1,9 +1,7 @@
 package com.github.chhsiaoninety.nitmproxy;
 
-import com.github.chhsiaoninety.nitmproxy.layer.proxy.HttpProxyHandler;
-import com.github.chhsiaoninety.nitmproxy.layer.proxy.SocksProxyHandler;
+import com.github.chhsiaoninety.nitmproxy.channel.BackendChannelBootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -15,17 +13,14 @@ import java.net.InetSocketAddress;
 public class NitmProxyInitializer extends ChannelInitializer<Channel> {
     private static final Logger LOGGER = LoggerFactory.getLogger(NitmProxyInitializer.class);
 
-    private NitmProxyConfig config;
-    private HandlerProvider handlerProvider;
+    private NitmProxyMaster master;
 
     public NitmProxyInitializer(NitmProxyConfig config) {
-        this(config, new HandlerProvider(config));
+        this(new NitmProxyMaster(config, new HandlerProvider(), new BackendChannelBootstrap()));
     }
 
-    public NitmProxyInitializer(NitmProxyConfig config,
-                                HandlerProvider handlerProvider) {
-        this.config = config;
-        this.handlerProvider = handlerProvider;
+    public NitmProxyInitializer(NitmProxyMaster master) {
+        this.master = master;
     }
 
     @Override
@@ -33,7 +28,7 @@ public class NitmProxyInitializer extends ChannelInitializer<Channel> {
         InetSocketAddress address = (InetSocketAddress) channel.remoteAddress();
         Address clientAddress = new Address(address.getHostName(), address.getPort());
         channel.pipeline().addLast(
-                proxyHandler(clientAddress),
+                master.proxyHandler(clientAddress),
                 new SimpleChannelInboundHandler<Object>() {
                     @Override
                     protected void channelRead0(ChannelHandlerContext channelHandlerContext, Object o)
@@ -41,16 +36,5 @@ public class NitmProxyInitializer extends ChannelInitializer<Channel> {
                         LOGGER.info("[Client ({})] => Unhandled inbound: {}", clientAddress, o);
                     }
                 });
-    }
-
-    private ChannelHandler proxyHandler(Address clientAddress) {
-        switch (config.getProxyMode()) {
-        case HTTP:
-            return new HttpProxyHandler(handlerProvider, config, new ConnectionInfo(clientAddress));
-        case SOCKS:
-            return new SocksProxyHandler(handlerProvider, config, new ConnectionInfo(clientAddress));
-        default:
-            throw new IllegalStateException("No proxy mode available: " + config.getProxyMode());
-        }
     }
 }

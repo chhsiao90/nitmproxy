@@ -1,7 +1,7 @@
 package com.github.chhsiaoninety.nitmproxy.layer.protocol.http2;
 
 import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
-import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
+import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler;
@@ -26,13 +26,13 @@ import org.slf4j.LoggerFactory;
 public class Http2BackendHandler extends ChannelInboundHandlerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(Http2BackendHandler.class);
 
-    private NitmProxyConfig config;
+    private NitmProxyMaster master;
     private ConnectionInfo connectionInfo;
     private Channel outboundChannel;
 
-    public Http2BackendHandler(NitmProxyConfig config, ConnectionInfo connectionInfo,
+    public Http2BackendHandler(NitmProxyMaster master, ConnectionInfo connectionInfo,
                                Channel outboundChannel) {
-        this.config = config;
+        this.master = master;
         this.connectionInfo = connectionInfo;
         this.outboundChannel = outboundChannel;
     }
@@ -57,7 +57,7 @@ public class Http2BackendHandler extends ChannelInboundHandlerAdapter {
                 .frameListener(new DelegatingDecompressorFrameListener(
                         connection,
                         new InboundHttp2ToHttpAdapterBuilder(connection)
-                                .maxContentLength(config.getMaxContentLength())
+                                .maxContentLength(master.config().getMaxContentLength())
                                 .propagateSettings(true)
                                 .build()))
                 .frameLogger(new Http2FrameLogger(LogLevel.DEBUG))

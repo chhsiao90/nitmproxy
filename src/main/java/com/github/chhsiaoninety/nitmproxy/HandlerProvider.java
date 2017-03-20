@@ -9,42 +9,38 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 
 public class HandlerProvider {
-    private NitmProxyConfig config;
-
-    public HandlerProvider(NitmProxyConfig config) {
-        this.config = config;
-    }
-
     public ChannelHandler http1BackendHandler(
-            ConnectionInfo connectionInfo, Channel outboundChannel) {
-        return new Http1BackendHandler(config, connectionInfo, outboundChannel);
+            NitmProxyMaster master, ConnectionInfo connectionInfo, Channel outboundChannel) {
+        return new Http1BackendHandler(master, connectionInfo, outboundChannel);
     }
 
     public ChannelHandler http1FrontendHandler(
-            ConnectionInfo connectionInfo) {
-        return new Http1FrontendHandler(this, config, connectionInfo);
+            NitmProxyMaster master, ConnectionInfo connectionInfo) {
+        return new Http1FrontendHandler(master, connectionInfo);
     }
 
     public ChannelHandler http1FrontendHandler(
-            ConnectionInfo connectionInfo, Channel outboundChannel) {
-        return new Http1FrontendHandler(this, config, connectionInfo, outboundChannel);
+            NitmProxyMaster master, ConnectionInfo connectionInfo, Channel outboundChannel) {
+        return new Http1FrontendHandler(master, connectionInfo, outboundChannel);
     }
 
     public ChannelHandler http2BackendHandler(
-            ConnectionInfo connectionInfo, Channel outboundChannel) {
-        return new Http2BackendHandler(config, connectionInfo, outboundChannel);
+            NitmProxyMaster master, ConnectionInfo connectionInfo, Channel outboundChannel) {
+        return new Http2BackendHandler(master, connectionInfo, outboundChannel);
     }
 
     public ChannelHandler http2FrontendHandler(
-            ConnectionInfo connectionInfo, Channel outboundChannel) {
-        return new Http2FrontendHandler(config, connectionInfo, outboundChannel);
+            NitmProxyMaster master, ConnectionInfo connectionInfo, Channel outboundChannel) {
+        return new Http2FrontendHandler(master, connectionInfo, outboundChannel);
     }
 
-    public ChannelHandler frontendTlsHandler(ConnectionInfo connectionInfo, Channel outboundChannel) {
-        return new TlsHandler(this, config, connectionInfo, outboundChannel, true);
+    public ChannelHandler frontendTlsHandler(
+            NitmProxyMaster master, ConnectionInfo connectionInfo, Channel outboundChannel) {
+        return new TlsHandler(master, connectionInfo, outboundChannel, true);
     }
 
-    public ChannelHandler backendTlsHandler(ConnectionInfo connectionInfo, Channel outboundChannel) {
-        return new TlsHandler(this, config, connectionInfo, outboundChannel, false);
+    public ChannelHandler backendTlsHandler(
+            NitmProxyMaster master, ConnectionInfo connectionInfo, Channel outboundChannel) {
+        return new TlsHandler(master, connectionInfo, outboundChannel, false);
     }
 }
