@@ -29,11 +29,6 @@ public class Http1FrontendHandlerTest {
     public void setUp() throws Exception {
         master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
-        when(master.connect(any(), any(), any())).then(
-                invocationOnMock ->  {
-                    outboundChannel = new EmbeddedChannel((ChannelHandler) invocationOnMock.getArguments()[2]);
-                    return outboundChannel.newSucceededFuture();
-                });
         when(master.handler(any(), any(), any())).thenAnswer(m -> new ChannelHandlerAdapter() {
         });
 
@@ -86,7 +81,7 @@ public class Http1FrontendHandlerTest {
 
     @Test
     public void shouldHandleHttpProxyRequest() {
-        Http1FrontendHandler handler = httpProxyHandler();
+        Http1FrontendHandler handler = httpProxyHandler(true);
         inboundChannel.pipeline().addLast(handler);
 
         ByteBuf requestBytes = requestBytes(new DefaultHttpRequest(
@@ -105,7 +100,7 @@ public class Http1FrontendHandlerTest {
 
     @Test
     public void shouldHandleHttpProxyRequests() {
-        Http1FrontendHandler handler = httpProxyHandler();
+        Http1FrontendHandler handler = httpProxyHandler(true);
         inboundChannel.pipeline().addLast(handler);
 
         ByteBuf requestBytes = requestBytes(new DefaultHttpRequest(
@@ -136,7 +131,7 @@ public class Http1FrontendHandlerTest {
 
     @Test
     public void shouldHandleHttpProxyCreateNewConnection() {
-        Http1FrontendHandler handler = httpProxyHandler();
+        Http1FrontendHandler handler = httpProxyHandler(true);
         inboundChannel.pipeline().addLast(handler);
 
         ByteBuf firstRequestBytes = requestBytes(new DefaultHttpRequest(
@@ -172,7 +167,89 @@ public class Http1FrontendHandlerTest {
         assertFalse(firstOutboundChannel.isActive());
     }
 
-    private Http1FrontendHandler httpProxyHandler() {
+    @Test
+    public void shouldClosedWhenHttpProxyDestinationNotAvailable() {
+        Http1FrontendHandler handler = httpProxyHandler(false);
+        inboundChannel.pipeline().addLast(handler);
+
+        ByteBuf firstRequestBytes = requestBytes(new DefaultHttpRequest(
+                HttpVersion.HTTP_1_1, HttpMethod.GET, "http://localhost:8000/"));
+        assertFalse(inboundChannel.writeInbound(firstRequestBytes));
+
+        assertFalse(inboundChannel.isActive());
+    }
+
+    @Test
+    public void shouldCreateNewOutboundWhenOldIsInactive() {
+        Http1FrontendHandler handler = httpProxyHandler(true);
+        inboundChannel.pipeline().addLast(handler);
+
+        ByteBuf firstRequestBytes = requestBytes(new DefaultHttpRequest(
+                HttpVersion.HTTP_1_1, HttpMethod.GET, "http://localhost:8000/"));
+        assertFalse(inboundChannel.writeInbound(firstRequestBytes));
+
+        assertEquals(1, outboundChannel.outboundMessages().size());
+        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
+
+        HttpRequest httpRequest = (HttpRequest) outboundChannel.outboundMessages().poll();
+        assertEquals(httpRequest.method(), HttpMethod.GET);
+        assertEquals(httpRequest.protocolVersion(), HttpVersion.HTTP_1_1);
+        assertEquals(httpRequest.uri(), "/");
+        release(httpRequest);
+
+        EmbeddedChannel firstOutboundChannel = outboundChannel;
+        outboundChannel.close();
+
+        // Second request
+        ByteBuf secondRequestBytes = requestBytes(new DefaultHttpRequest(
+                HttpVersion.HTTP_1_1, HttpMethod.GET, "http://localhost:8000/"));
+        assertFalse(inboundChannel.writeInbound(secondRequestBytes));
+
+        assertEquals(1, outboundChannel.outboundMessages().size());
+        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
+
+        httpRequest = (HttpRequest) outboundChannel.outboundMessages().poll();
+        assertEquals(httpRequest.method(), HttpMethod.GET);
+        assertEquals(httpRequest.protocolVersion(), HttpVersion.HTTP_1_1);
+        assertEquals(httpRequest.uri(), "/");
+        release(httpRequest);
+
+        assertNotSame(firstOutboundChannel, outboundChannel);
+    }
+
+    @Test
+    public void shouldHandleConnect() {
+        Http1FrontendHandler handler = httpProxyHandler(true);
+        inboundChannel.pipeline().addLast(handler);
+
+        ByteBuf requestBytes = requestBytes(new DefaultHttpRequest(
+                HttpVersion.HTTP_1_1, HttpMethod.CONNECT, "localhost:8000"));
+        assertFalse(inboundChannel.writeInbound(requestBytes));
+
+        assertNotNull(outboundChannel);
+        assertTrue(outboundChannel.isActive());
+
+        assertEquals(1, inboundChannel.outboundMessages().size());
+        assertTrue(inboundChannel.outboundMessages().peek() instanceof ByteBuf);
+
+        ByteBuf respByteBuf = (ByteBuf) inboundChannel.outboundMessages().poll();
+        byte[] respBytes = new byte[respByteBuf.readableBytes()];
+        respByteBuf.readBytes(respBytes);
+        assertEquals("HTTP/1.1 200 OK\r\n\r\n", new String(respBytes));
+        respByteBuf.release();
+    }
+
+    private Http1FrontendHandler httpProxyHandler(boolean outboundAvailable) {
+        if (outboundAvailable) {
+            when(master.connect(any(), any(), any())).then(
+                    invocationOnMock ->  {
+                        outboundChannel = new EmbeddedChannel((ChannelHandler) invocationOnMock.getArguments()[2]);
+                        return outboundChannel.newSucceededFuture();
+                    });
+        } else {
+            when(master.connect(any(), any(), any())).then(
+                    invocationOnMock ->  inboundChannel.newPromise().setFailure(new Exception()));
+        }
         return new Http1FrontendHandler(master, connectionInfo());
     }
 

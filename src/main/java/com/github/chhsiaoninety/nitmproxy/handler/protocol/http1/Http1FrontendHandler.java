@@ -7,22 +7,8 @@ import com.github.chhsiaoninety.nitmproxy.enums.Handler;
 import com.github.chhsiaoninety.nitmproxy.enums.ProxyMode;
 import com.github.chhsiaoninety.nitmproxy.event.OutboundChannelClosedEvent;
 import com.google.common.base.Strings;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.channel.*;
+import io.netty.handler.codec.http.*;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkState;
 
 public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
@@ -122,15 +108,16 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
     }
 
     private void handleTunnelProxyConnection(ChannelHandlerContext ctx,
-                                             HttpRequest request) throws Exception {
+                                             FullHttpRequest request) throws Exception {
         Address address = resolveTunnelAddr(request.uri());
+        HttpVersion protocolVersion = request.protocolVersion();
         createOutboundChannel(ctx, address)
                 .addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture future) throws Exception {
                         if (future.isSuccess()) {
-                            HttpResponse response =
-                                    new DefaultHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
+                            FullHttpResponse response =
+                                    new DefaultFullHttpResponse(protocolVersion, HttpResponseStatus.OK);
                             LOGGER.info("[Client ({})] <= [Proxy] : {}", connectionInfo.getClientAddr(), response);
                             ctx.writeAndFlush(response);
 
@@ -143,24 +130,29 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
     }
 
     private void handleHttpProxyConnection(ChannelHandlerContext ctx,
-                                           HttpRequest request) throws Exception {
+                                           FullHttpRequest request) throws Exception {
         FullPath fullPath = resolveHttpProxyPath(request.uri());
         Address serverAddr = new Address(fullPath.host, fullPath.port);
         if (outboundChannel != null && !connectionInfo.getServerAddr().equals(serverAddr)) {
             outboundChannel.close();
             outboundChannel = null;
         }
+        if (outboundChannel != null && !outboundChannel.isActive()) {
+            outboundChannel.close();
+            outboundChannel = null;
+        }
+
         if (outboundChannel == null) {
             outboundChannel = createOutboundChannel(ctx, serverAddr).channel();
         }
 
-        DefaultFullHttpRequest newRequest = new DefaultFullHttpRequest(
-                request.protocolVersion(), request.method(), fullPath.path);
+        FullHttpRequest newRequest = request.copy();
         newRequest.headers().set(request.headers());
+        newRequest.setUri(fullPath.path);
 
         LOGGER.info("[Client ({})] => [Server ({})] : {}",
-                    connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
-                    newRequest);
+                connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                newRequest);
         outboundChannel.writeAndFlush(newRequest);
     }
 
