@@ -37,7 +37,7 @@ public class HttpObjectUtil {
     }
 
     public static ByteBuf requestBytes(HttpRequest request) {
-        String req = String.format("%s %s %s\r\n%s\r\n\r\n",
+        String req = String.format("%s %s %s\r\n%s\r\n",
                                    request.method(),
                                    request.uri(),
                                    request.protocolVersion(),
@@ -46,10 +46,14 @@ public class HttpObjectUtil {
     }
 
     private static String headersString(HttpHeaders headers) {
+        if (headers.isEmpty()) {
+            return "";
+        }
+
         List<String> headerStrings = headers.entries().stream()
                                             .map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue()))
                                             .collect(Collectors.toList());
-        return Joiner.on("\r\n").join(headerStrings);
+        return Joiner.on("\r\n").join(headerStrings) + "\r\n";
     }
 
     public static ByteBuf responseBytes() {
@@ -57,8 +61,8 @@ public class HttpObjectUtil {
                 "HTTP/1.1 200 OK\r\n\r\n".getBytes());
     }
 
-    public static ByteBuf requestBytes(HttpResponse response) {
-        String resp = String.format("%s %s %s\r\n%s\r\n\r\n",
+    public static ByteBuf responseBytes(HttpResponse response) {
+        String resp = String.format("%s %s %s\r\n%s\r\n",
                                    response.protocolVersion(),
                                    response.status().codeAsText(),
                                    response.status().reasonPhrase(),
