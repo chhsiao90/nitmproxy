@@ -1,6 +1,10 @@
 package com.github.chhsiaoninety.nitmproxy.tls;
 
+import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -48,6 +52,8 @@ public class CertUtil {
                     after,
                     new X500Name("CN=" + host),
                     keyPair.getPublic());
+            GeneralNames generalNames = GeneralNames.getInstance(new DERSequence(new GeneralName(GeneralName.dNSName, host)));
+            x509.addExtension(Extension.subjectAlternativeName, true, generalNames);
 
             ContentSigner signer = new JcaContentSignerBuilder("SHA256WithRSAEncryption")
                     .build(keyPair.getPrivate());
