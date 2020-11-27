@@ -26,43 +26,12 @@ public class NitmProxyMaster {
         return config;
     }
 
-    public ChannelHandler handler(Handler handler, ConnectionInfo connectionInfo,
-                                  Channel outboundChannel) {
-        switch (handler) {
-        case HTTP1_BACKEND:
-            return handlerProvider.http1BackendHandler(this, connectionInfo, outboundChannel);
-        case HTTP1_FRONTEND:
-            if (outboundChannel == null) {
-                return handlerProvider.http1FrontendHandler(this, connectionInfo);
-            } else {
-                return handlerProvider.http1FrontendHandler(this, connectionInfo, outboundChannel);
-            }
-        case HTTP2_BACKEND:
-            return handlerProvider.http2BackendHandler(this, connectionInfo, outboundChannel);
-        case HTTP2_FRONTEND:
-            return handlerProvider.http2FrontendHandler(this, connectionInfo, outboundChannel);
-        case TLS_BACKEND:
-            return handlerProvider.backendTlsHandler(this, connectionInfo, outboundChannel);
-        case TLS_FRONTEND:
-            return handlerProvider.frontendTlsHandler(this, connectionInfo, outboundChannel);
-        default:
-            throw new IllegalStateException("No handler found with: " + handler);
-        }
+    public HandlerProvider provider() {
+        return handlerProvider;
     }
 
-    public ChannelHandler proxyHandler(Address clientAddress) {
-        switch (config.getProxyMode()) {
-        case HTTP:
-            return new HttpProxyHandler(this, new ConnectionInfo(clientAddress));
-        case SOCKS:
-            return new SocksProxyHandler(this, new ConnectionInfo(clientAddress));
-        default:
-            throw new IllegalStateException("No proxy mode available: " + config.getProxyMode());
-        }
-    }
-
-    public ChannelFuture connect(ChannelHandlerContext fromCtx, ConnectionInfo connectionInfo,
+    public ChannelFuture connect(ChannelHandlerContext fromCtx, ConnectionContext connectionContext,
                                  ChannelHandler handler) {
-        return backendChannelBootstrap.connect(fromCtx, this, connectionInfo, handler);
+        return backendChannelBootstrap.connect(fromCtx, this, connectionContext, handler);
     }
 }

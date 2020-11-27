@@ -27,8 +27,9 @@ public class NitmProxyInitializer extends ChannelInitializer<Channel> {
     protected void initChannel(Channel channel) throws Exception {
         InetSocketAddress address = (InetSocketAddress) channel.remoteAddress();
         Address clientAddress = new Address(address.getHostName(), address.getPort());
+        ConnectionContext context = new ConnectionContext(master).withClientAddr(clientAddress).withClientChannel(channel);
         channel.pipeline().addLast(
-                master.proxyHandler(clientAddress),
+                context.proxyHandler(),
                 new SimpleChannelInboundHandler<Object>() {
                     @Override
                     protected void channelRead0(ChannelHandlerContext channelHandlerContext, Object o)

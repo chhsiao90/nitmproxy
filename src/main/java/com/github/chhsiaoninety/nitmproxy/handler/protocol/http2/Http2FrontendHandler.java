@@ -1,8 +1,7 @@
 package com.github.chhsiaoninety.nitmproxy.handler.protocol.http2;
 
-import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
+import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -25,27 +24,21 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Deque;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.regex.Pattern;
 
 public class Http2FrontendHandler extends ChannelInboundHandlerAdapter {
-    private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
-    private static final Pattern TUNNEL_ADDR_PATTERN = Pattern.compile("^([a-zA-Z0-9\\.\\-_]+):(\\d+)");
-
     private static final Logger LOGGER = LoggerFactory.getLogger(Http2FrontendHandler.class);
 
     private NitmProxyMaster master;
-    private ConnectionInfo connectionInfo;
-    private Channel outboundChannel;
+    private ConnectionContext connectionContext;
 
-    public Http2FrontendHandler(NitmProxyMaster master, ConnectionInfo connectionInfo, Channel outboundChannel) {
+    public Http2FrontendHandler(NitmProxyMaster master, ConnectionContext connectionContext) {
         this.master = master;
-        this.connectionInfo = connectionInfo;
-        this.outboundChannel = outboundChannel;
+        this.connectionContext = connectionContext;
     }
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerAdded", connectionInfo);
+        LOGGER.info("{} : handlerAdded", connectionContext);
 
         Http2Connection connection = new DefaultHttp2Connection(true);
         ChannelHandler http2ConnHandler = new HttpToHttp2ConnectionHandlerBuilder()
@@ -65,8 +58,8 @@ public class Http2FrontendHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : channelInactive", connectionInfo);
-        outboundChannel.close();
+        LOGGER.info("{} : channelInactive", connectionContext);
+        connectionContext.serverChannel().close();
     }
 
     private class Http2Handler extends ChannelDuplexHandler {
@@ -75,7 +68,7 @@ public class Http2FrontendHandler extends ChannelInboundHandlerAdapter {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             LOGGER.info("[Client ({})] => [Server ({})] : {}",
-                        connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                        connectionContext.getClientAddr(), connectionContext.getServerAddr(),
                         msg);
 
             if (msg instanceof FullHttpRequest) {
@@ -89,13 +82,13 @@ public class Http2FrontendHandler extends ChannelInboundHandlerAdapter {
                 throw new IllegalStateException("Cannot handle message: " + msg.getClass());
             }
 
-            outboundChannel.writeAndFlush(msg);
+            connectionContext.serverChannel().writeAndFlush(msg);
         }
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
             LOGGER.info("[Client ({})] <= [Server ({})] : {}",
-                        connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                        connectionContext.getClientAddr(), connectionContext.getServerAddr(),
                         msg);
 
             if (msg instanceof HttpResponse) {

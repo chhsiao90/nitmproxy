@@ -1,8 +1,7 @@
 package com.github.chhsiaoninety.nitmproxy.handler.protocol.http2;
 
-import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
+import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -27,30 +26,27 @@ public class Http2BackendHandler extends ChannelInboundHandlerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(Http2BackendHandler.class);
 
     private NitmProxyMaster master;
-    private ConnectionInfo connectionInfo;
-    private Channel outboundChannel;
+    private ConnectionContext connectionContext;
 
-    public Http2BackendHandler(NitmProxyMaster master, ConnectionInfo connectionInfo,
-                               Channel outboundChannel) {
+    public Http2BackendHandler(NitmProxyMaster master, ConnectionContext connectionContext) {
         this.master = master;
-        this.connectionInfo = connectionInfo;
-        this.outboundChannel = outboundChannel;
+        this.connectionContext = connectionContext;
     }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : channelActive", connectionInfo);
+        LOGGER.info("{} : channelActive", connectionContext);
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : channelInactive", connectionInfo);
-        outboundChannel.close();
+        LOGGER.info("{} : channelInactive", connectionContext);
+        connectionContext.clientChannel().close();
     }
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerAdded", connectionInfo);
+        LOGGER.info("{} : handlerAdded", connectionContext);
 
         Http2Connection connection = new DefaultHttp2Connection(false);
         ChannelHandler http2ConnHandler = new HttpToHttp2ConnectionHandlerBuilder()
@@ -72,15 +68,15 @@ public class Http2BackendHandler extends ChannelInboundHandlerAdapter {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
             LOGGER.info("[Client ({})] <= [Server ({})] : {}",
-                        connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                        connectionContext.getClientAddr(), connectionContext.getServerAddr(),
                         msg);
-            outboundChannel.writeAndFlush(msg);
+            connectionContext.clientChannel().writeAndFlush(msg);
         }
 
         @Override
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
             LOGGER.info("[Client ({})] => [Server ({})] : {}",
-                        connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                        connectionContext.getClientAddr(), connectionContext.getServerAddr(),
                         msg);
             if (msg instanceof FullHttpRequest) {
                 HttpMessage httpMessage = (HttpRequest) msg;

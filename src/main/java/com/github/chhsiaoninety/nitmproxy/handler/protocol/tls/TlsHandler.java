@@ -1,6 +1,6 @@
 package com.github.chhsiaoninety.nitmproxy.handler.protocol.tls;
 
-import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
+import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
 import com.github.chhsiaoninety.nitmproxy.enums.Handler;
 import com.github.chhsiaoninety.nitmproxy.tls.TlsUtil;
@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -24,18 +25,18 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
     private static final Logger LOGGER = LoggerFactory.getLogger(TlsHandler.class);
 
     private NitmProxyMaster master;
-    private ConnectionInfo connectionInfo;
+    private ConnectionContext connectionContext;
     private Channel outboundChannel;
     private boolean client;
 
     private final List<Object> pendings;
 
     public TlsHandler(NitmProxyMaster master,
-                      ConnectionInfo connectionInfo, Channel outboundChannel,
+                      ConnectionContext connectionContext,
                       boolean client) {
         this.master = master;
-        this.connectionInfo = connectionInfo;
-        this.outboundChannel = outboundChannel;
+        this.connectionContext = connectionContext;
+        this.outboundChannel = client ? connectionContext.serverChannel() : connectionContext.clientChannel();
         this.client = client;
 
         pendings = new ArrayList<>();
@@ -43,9 +44,9 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerAdded", connectionInfo.toString(client));
+        LOGGER.info("{} : handlerAdded", connectionContext.toString(client));
 
-        if (master.config().getHttpsPorts().contains(connectionInfo.getServerAddr().getPort())) {
+        if (master.config().getHttpsPorts().contains(connectionContext.getServerAddr().getPort())) {
             SslHandler sslHandler = sslCtx().newHandler(ctx.alloc());
             ctx.pipeline()
                .addBefore(ctx.name(), null, sslHandler)
@@ -57,7 +58,7 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     private SslContext sslCtx() throws SSLException {
         if (client) {
-            return TlsUtil.ctxForServer(master.config(), connectionInfo.getServerAddr().getHost());
+            return TlsUtil.ctxForServer(master.config(), connectionContext.getServerAddr().getHost());
         } else {
             return TlsUtil.ctxForClient(master.config());
         }
@@ -65,7 +66,7 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerRemoved", connectionInfo.toString(client));
+        LOGGER.info("{} : handlerRemoved", connectionContext.toString(client));
 
         flushPendings(ctx);
         ctx.flush();
@@ -84,7 +85,7 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        LOGGER.error("{} : exceptionCaught, message is {}", connectionInfo.toString(client), cause.getMessage());
+        LOGGER.error("{} : exceptionCaught, message is {}", connectionContext.toString(client), cause.getMessage());
 
         outboundChannel.close();
         ctx.close();
@@ -102,17 +103,17 @@ public class TlsHandler extends ChannelOutboundHandlerAdapter {
 
     private void configHttp1(ChannelHandlerContext ctx) {
         if (client) {
-            ctx.pipeline().replace(this, null, master.handler(Handler.HTTP1_FRONTEND, connectionInfo, outboundChannel));
+            ctx.pipeline().replace(this, null, connectionContext.handler(Handler.HTTP1_FRONTEND));
         } else {
-            ctx.pipeline().replace(this, null, master.handler(Handler.HTTP1_BACKEND, connectionInfo, outboundChannel));
+            ctx.pipeline().replace(this, null, connectionContext.handler(Handler.HTTP1_BACKEND));
         }
     }
 
     private void configHttp2(ChannelHandlerContext ctx) {
         if (client) {
-            ctx.pipeline().replace(this, null, master.handler(Handler.HTTP2_FRONTEND, connectionInfo, outboundChannel));
+            ctx.pipeline().replace(this, null, connectionContext.handler(Handler.HTTP2_FRONTEND));
         } else {
-            ctx.pipeline().replace(this, null, master.handler(Handler.HTTP2_BACKEND, connectionInfo, outboundChannel));
+            ctx.pipeline().replace(this, null, connectionContext.handler(Handler.HTTP2_BACKEND));
         }
     }
 

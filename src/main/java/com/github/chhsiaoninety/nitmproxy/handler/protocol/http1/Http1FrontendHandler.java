@@ -1,22 +1,30 @@
 package com.github.chhsiaoninety.nitmproxy.handler.protocol.http1;
 
 import com.github.chhsiaoninety.nitmproxy.Address;
-import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
+import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
 import com.github.chhsiaoninety.nitmproxy.enums.Handler;
 import com.github.chhsiaoninety.nitmproxy.enums.ProxyMode;
 import com.github.chhsiaoninety.nitmproxy.event.OutboundChannelClosedEvent;
 import com.google.common.base.Strings;
-import io.netty.channel.*;
-import io.netty.handler.codec.http.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static com.google.common.base.Preconditions.checkState;
 
 public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
@@ -25,36 +33,23 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
     private static final Logger LOGGER = LoggerFactory.getLogger(Http1FrontendHandler.class);
 
     private NitmProxyMaster master;
-    private ConnectionInfo connectionInfo;
+    private ConnectionContext connectionContext;
     private boolean tunneled;
 
-    private Channel outboundChannel;
     private ChannelHandler httpServerCodec;
     private ChannelHandler httpObjectAggregator;
 
-    public Http1FrontendHandler(NitmProxyMaster master,
-                                ConnectionInfo connectionInfo) {
-        this(master, connectionInfo, null, false);
-    }
-
-    public Http1FrontendHandler(NitmProxyMaster master,
-                                ConnectionInfo connectionInfo, Channel outboundChannel) {
-        this(master, connectionInfo, outboundChannel, true);
-    }
-
-    private Http1FrontendHandler(NitmProxyMaster master, ConnectionInfo connectionInfo,
-                                Channel outboundChannel, boolean tunneled) {
+    public Http1FrontendHandler(NitmProxyMaster master, ConnectionContext connectionContext) {
         super();
         this.master = master;
-        this.connectionInfo = connectionInfo;
-        this.outboundChannel = outboundChannel;
-        this.tunneled = tunneled;
+        this.connectionContext = connectionContext;
+        this.tunneled = connectionContext.connected();
 
     }
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerAdded", connectionInfo);
+        LOGGER.info("{} : handlerAdded", connectionContext);
 
         httpServerCodec = new HttpServerCodec();
         httpObjectAggregator = new HttpObjectAggregator(master.config().getMaxContentLength());
@@ -65,13 +60,12 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerRemoved", connectionInfo);
+        LOGGER.info("{} : handlerRemoved", connectionContext);
 
         ctx.pipeline().remove(httpServerCodec).remove(httpObjectAggregator);
 
-        if (outboundChannel != null) {
-            outboundChannel.close();
-            outboundChannel = null;
+        if (tunneled) {
+            connectionContext.serverChannel().close();
         }
     }
 
@@ -85,22 +79,18 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                 handleHttpProxyConnection(ctx, request);
             }
         } else {
-            checkState(outboundChannel != null);
             LOGGER.info("[Client ({})] => [Server ({})] : {}",
-                        connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                        connectionContext.getClientAddr(), connectionContext.getServerAddr(),
                         request);
-            outboundChannel.writeAndFlush(ReferenceCountUtil.retain(request));
+            connectionContext.serverChannel().writeAndFlush(ReferenceCountUtil.retain(request));
         }
     }
 
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         if (evt instanceof OutboundChannelClosedEvent) {
-            OutboundChannelClosedEvent event = (OutboundChannelClosedEvent) evt;
-            if (tunneled || connectionInfo.equals(event.getConnectionInfo())) {
+            if (tunneled) {
                 ctx.close();
-            } else {
-                outboundChannel = null;
             }
         }
 
@@ -111,49 +101,36 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                                              FullHttpRequest request) throws Exception {
         Address address = resolveTunnelAddr(request.uri());
         HttpVersion protocolVersion = request.protocolVersion();
-        createOutboundChannel(ctx, address)
-                .addListener(new ChannelFutureListener() {
-                    @Override
-                    public void operationComplete(ChannelFuture future) throws Exception {
-                        if (future.isSuccess()) {
-                            FullHttpResponse response =
-                                    new DefaultFullHttpResponse(protocolVersion, HttpResponseStatus.OK);
-                            LOGGER.info("[Client ({})] <= [Proxy] : {}", connectionInfo.getClientAddr(), response);
-                            ctx.writeAndFlush(response);
-
-                            ConnectionInfo newConnInfo = new ConnectionInfo(connectionInfo.getClientAddr(), address);
-                            ctx.pipeline().replace(Http1FrontendHandler.this, null,
-                                                   master.handler(Handler.TLS_FRONTEND, newConnInfo, future.channel()));
-                        }
-                    }
-                });
+        createOutboundChannel(ctx, address).addListener((future) -> {
+            if (future.isSuccess()) {
+                FullHttpResponse response =
+                        new DefaultFullHttpResponse(protocolVersion, HttpResponseStatus.OK);
+                LOGGER.info("[Client ({})] <= [Proxy] : {}", connectionContext.getClientAddr(), response);
+                ctx.writeAndFlush(response);
+                ctx.pipeline().replace(Http1FrontendHandler.this, null,
+                        connectionContext.handler(Handler.TLS_FRONTEND));
+            }
+        });
     }
 
     private void handleHttpProxyConnection(ChannelHandlerContext ctx,
                                            FullHttpRequest request) throws Exception {
         FullPath fullPath = resolveHttpProxyPath(request.uri());
         Address serverAddr = new Address(fullPath.host, fullPath.port);
-        if (outboundChannel != null && !connectionInfo.getServerAddr().equals(serverAddr)) {
-            outboundChannel.close();
-            outboundChannel = null;
-        }
-        if (outboundChannel != null && !outboundChannel.isActive()) {
-            outboundChannel.close();
-            outboundChannel = null;
-        }
+        connectionContext.connect(serverAddr, ctx).addListener((ChannelFuture future) -> {
+           if (future.isSuccess()) {
+               FullHttpRequest newRequest = request.copy();
+               newRequest.headers().set(request.headers());
+               newRequest.setUri(fullPath.path);
 
-        if (outboundChannel == null) {
-            outboundChannel = createOutboundChannel(ctx, serverAddr).channel();
-        }
-
-        FullHttpRequest newRequest = request.copy();
-        newRequest.headers().set(request.headers());
-        newRequest.setUri(fullPath.path);
-
-        LOGGER.info("[Client ({})] => [Server ({})] : {}",
-                connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
-                newRequest);
-        outboundChannel.writeAndFlush(newRequest);
+               LOGGER.info("[Client ({})] => [Server ({})] : {}",
+                       connectionContext.getClientAddr(), connectionContext.getServerAddr(),
+                       newRequest);
+               future.channel().writeAndFlush(newRequest);
+           } else {
+               ctx.channel().close();
+           }
+        });
     }
 
     private FullPath resolveHttpProxyPath(String fullPath) {
@@ -186,20 +163,10 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
     }
 
     private ChannelFuture createOutboundChannel(ChannelHandlerContext ctx, Address serverAddr) {
-        connectionInfo = new ConnectionInfo(connectionInfo.getClientAddr(),
-                                            new Address(serverAddr.getHost(), serverAddr.getPort()));
-        ChannelFuture future = master.connect(ctx, connectionInfo, new ChannelInitializer<Channel>() {
-            @Override
-            protected void initChannel(Channel ch) throws Exception {
-                ch.pipeline().addLast(master.handler(Handler.TLS_BACKEND, connectionInfo, ctx.channel()));
-            }
-        });
-        future.addListener(new ChannelFutureListener() {
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                if (!future.isSuccess()) {
-                    ctx.channel().close();
-                }
+        ChannelFuture future = connectionContext.connect(serverAddr, ctx);
+        future.addListener((f) -> {
+            if (!f.isSuccess()) {
+                ctx.channel().close();
             }
         });
         return future;

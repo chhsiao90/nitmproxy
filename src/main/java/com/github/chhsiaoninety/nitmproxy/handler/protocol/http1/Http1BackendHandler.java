@@ -1,6 +1,6 @@
 package com.github.chhsiaoninety.nitmproxy.handler.protocol.http1;
 
-import com.github.chhsiaoninety.nitmproxy.ConnectionInfo;
+import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
 import com.github.chhsiaoninety.nitmproxy.event.OutboundChannelClosedEvent;
 import io.netty.channel.Channel;
@@ -24,41 +24,37 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Http1BackendHandler.class);
 
-    @SuppressWarnings("all")
     private NitmProxyMaster master;
 
-    private ConnectionInfo connectionInfo;
-    private Channel outboundChannel;
+    private ConnectionContext connectionContext;
 
     private DelayOutboundHandler delayOutboundHandler;
 
     private volatile HttpRequest currentRequest;
 
-    public Http1BackendHandler(NitmProxyMaster master, ConnectionInfo connectionInfo,
-                               Channel outboundChannel) {
+    public Http1BackendHandler(NitmProxyMaster master, ConnectionContext connectionContext) {
         this.master = master;
-        this.connectionInfo = connectionInfo;
-        this.outboundChannel = outboundChannel;
+        this.connectionContext = connectionContext;
 
         delayOutboundHandler = new DelayOutboundHandler();
     }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : channelActive", connectionInfo);
+        LOGGER.info("{} : channelActive", connectionContext);
         delayOutboundHandler.next();
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : channelInactive", connectionInfo);
+        LOGGER.info("{} : channelInactive", connectionContext);
         delayOutboundHandler.release();
-        outboundChannel.pipeline().fireUserEventTriggered(new OutboundChannelClosedEvent(connectionInfo, false));
+        connectionContext.clientChannel().pipeline().fireUserEventTriggered(new OutboundChannelClosedEvent(connectionContext, false));
     }
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerAdded", connectionInfo);
+        LOGGER.info("{} : handlerAdded", connectionContext);
 
         ctx.pipeline()
            .addBefore(ctx.name(), null, new HttpClientCodec())
@@ -69,10 +65,10 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, HttpObject httpObject)
             throws Exception {
         LOGGER.info("[Client ({})] <= [Server ({})] : {}",
-                    connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                    connectionContext.getClientAddr(), connectionContext.getServerAddr(),
                     httpObject);
 
-        outboundChannel.writeAndFlush(ReferenceCountUtil.retain(httpObject));
+        connectionContext.clientChannel().writeAndFlush(ReferenceCountUtil.retain(httpObject));
 
         if (httpObject instanceof HttpResponse) {
             currentRequest = null;
@@ -93,7 +89,7 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
         public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
             if (msg instanceof FullHttpRequest) {
                 LOGGER.info("[Client ({})] => [Server ({})] : (PENDING) {}",
-                            connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                            connectionContext.getClientAddr(), connectionContext.getServerAddr(),
                             msg);
                 HttpRequest request = (HttpRequest) msg;
                 pendings.offer(new RequestPromise(request, promise));
@@ -113,7 +109,7 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
             RequestPromise requestPromise = pendings.poll();
             currentRequest = requestPromise.request;
             LOGGER.info("[Client ({})] => [Server ({})] : {}",
-                        connectionInfo.getClientAddr(), connectionInfo.getServerAddr(),
+                        connectionContext.getClientAddr(), connectionContext.getServerAddr(),
                         requestPromise.request);
 
             thisCtx.writeAndFlush(requestPromise.request, requestPromise.promise);
@@ -122,7 +118,7 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
         private void release() {
             while (!pendings.isEmpty()) {
                 RequestPromise requestPromise = pendings.poll();
-                LOGGER.info("{} : {} is dropped", connectionInfo.toString(true), requestPromise.request);
+                LOGGER.info("{} : {} is dropped", connectionContext.toString(true), requestPromise.request);
                 requestPromise.promise.setFailure(new IOException("Cannot send request to server"));
                 ReferenceCountUtil.release(requestPromise.request);
             }
