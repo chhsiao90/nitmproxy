@@ -117,9 +117,9 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                                            FullHttpRequest request) throws Exception {
         FullPath fullPath = resolveHttpProxyPath(request.uri());
         Address serverAddr = new Address(fullPath.host, fullPath.port);
+        FullHttpRequest newRequest = request.copy();
         connectionContext.connect(serverAddr, ctx).addListener((ChannelFuture future) -> {
            if (future.isSuccess()) {
-               FullHttpRequest newRequest = request.copy();
                newRequest.headers().set(request.headers());
                newRequest.setUri(fullPath.path);
 
@@ -128,6 +128,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                        newRequest);
                future.channel().writeAndFlush(newRequest);
            } else {
+               newRequest.release();
                ctx.channel().close();
            }
         });
