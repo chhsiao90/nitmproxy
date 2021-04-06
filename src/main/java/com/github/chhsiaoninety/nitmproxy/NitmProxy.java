@@ -1,12 +1,9 @@
 package com.github.chhsiaoninety.nitmproxy;
 
 import com.github.chhsiaoninety.nitmproxy.enums.ProxyMode;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
+
+import java.io.File;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -17,7 +14,12 @@ import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 
 public class NitmProxy {
     private static final Logger LOGGER = LoggerFactory.getLogger(NitmProxy.class);
@@ -151,12 +153,6 @@ public class NitmProxy {
                 throw new IllegalArgumentException("No key found: " + certKey);
             }
             config.setKeyFile(certKey);
-        }
-        if (commandLine.hasOption("clientNoHttp2")) {
-            config.setClientHttp2(false);
-        }
-        if (commandLine.hasOption("serverNoHttp2")) {
-            config.setServerHttp2(false);
         }
         if (commandLine.hasOption("k")) {
             config.setInsecure(true);

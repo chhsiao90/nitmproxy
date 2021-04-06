@@ -4,8 +4,9 @@ import com.github.chhsiaoninety.nitmproxy.handler.protocol.http1.Http1BackendHan
 import com.github.chhsiaoninety.nitmproxy.handler.protocol.http1.Http1FrontendHandler;
 import com.github.chhsiaoninety.nitmproxy.handler.protocol.http2.Http2BackendHandler;
 import com.github.chhsiaoninety.nitmproxy.handler.protocol.http2.Http2FrontendHandler;
-import com.github.chhsiaoninety.nitmproxy.handler.protocol.tls.TlsHandler;
-import io.netty.channel.Channel;
+import com.github.chhsiaoninety.nitmproxy.handler.protocol.tls.TlsBackendHandler;
+import com.github.chhsiaoninety.nitmproxy.handler.protocol.tls.TlsFrontendHandler;
+
 import io.netty.channel.ChannelHandler;
 
 public class HandlerProvider {
@@ -21,21 +22,21 @@ public class HandlerProvider {
 
     public ChannelHandler http2BackendHandler(
             NitmProxyMaster master, ConnectionContext connectionContext) {
-        return new Http2BackendHandler(master, connectionContext);
+        return new Http2BackendHandler(connectionContext);
     }
 
     public ChannelHandler http2FrontendHandler(
             NitmProxyMaster master, ConnectionContext connectionContext) {
-        return new Http2FrontendHandler(master, connectionContext);
+        return new Http2FrontendHandler(connectionContext);
     }
 
     public ChannelHandler frontendTlsHandler(
             NitmProxyMaster master, ConnectionContext connectionContext) {
-        return new TlsHandler(master, connectionContext, true);
+        return new TlsFrontendHandler(master, connectionContext);
     }
 
     public ChannelHandler backendTlsHandler(
             NitmProxyMaster master, ConnectionContext connectionContext) {
-        return new TlsHandler(master, connectionContext, false);
+        return new TlsBackendHandler(master, connectionContext);
     }
 }

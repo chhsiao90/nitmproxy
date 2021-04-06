@@ -7,6 +7,13 @@ import com.github.chhsiaoninety.nitmproxy.enums.Handler;
 import com.github.chhsiaoninety.nitmproxy.enums.ProxyMode;
 import com.github.chhsiaoninety.nitmproxy.event.OutboundChannelClosedEvent;
 import com.google.common.base.Strings;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -18,13 +25,7 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
@@ -100,17 +101,19 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
     private void handleTunnelProxyConnection(ChannelHandlerContext ctx,
                                              FullHttpRequest request) throws Exception {
         Address address = resolveTunnelAddr(request.uri());
-        HttpVersion protocolVersion = request.protocolVersion();
-        createOutboundChannel(ctx, address).addListener((future) -> {
-            if (future.isSuccess()) {
-                FullHttpResponse response =
-                        new DefaultFullHttpResponse(protocolVersion, HttpResponseStatus.OK);
-                LOGGER.info("[Client ({})] <= [Proxy] : {}", connectionContext.getClientAddr(), response);
-                ctx.writeAndFlush(response);
-                ctx.pipeline().replace(Http1FrontendHandler.this, null,
-                        connectionContext.handler(Handler.TLS_FRONTEND));
+        connectionContext.connect(address, ctx).addListener((future) -> {
+            if (!future.isSuccess()) {
+                ctx.close();
             }
         });
+
+        FullHttpResponse response =
+            new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
+        LOGGER.debug("{} : {}", connectionContext,
+            response.getClass().getSimpleName());
+        ctx.writeAndFlush(response);
+        ctx.pipeline().replace(Http1FrontendHandler.this, null,
+            connectionContext.handler(Handler.TLS_FRONTEND));
     }
 
     private void handleHttpProxyConnection(ChannelHandlerContext ctx,

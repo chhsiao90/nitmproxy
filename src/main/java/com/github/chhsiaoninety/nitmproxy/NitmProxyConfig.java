@@ -20,9 +20,6 @@ public class NitmProxyConfig {
 
     private int maxContentLength;
 
-    private boolean clientHttp2;
-    private boolean serverHttp2;
-
     // Default values
     public NitmProxyConfig() {
         proxyMode = ProxyMode.HTTP;
@@ -36,9 +33,6 @@ public class NitmProxyConfig {
         insecure = false;
 
         maxContentLength = 1024 * 1024;
-
-        clientHttp2 = true;
-        serverHttp2 = true;
     }
 
     public ProxyMode getProxyMode() {
@@ -105,22 +99,6 @@ public class NitmProxyConfig {
         this.maxContentLength = maxContentLength;
     }
 
-    public boolean isClientHttp2() {
-        return clientHttp2;
-    }
-
-    public void setClientHttp2(boolean clientHttp2) {
-        this.clientHttp2 = clientHttp2;
-    }
-
-    public boolean isServerHttp2() {
-        return serverHttp2;
-    }
-
-    public void setServerHttp2(boolean serverHttp2) {
-        this.serverHttp2 = serverHttp2;
-    }
-
     @Override
     public String toString() {
         List<String> properties = Arrays.asList(
@@ -131,9 +109,7 @@ public class NitmProxyConfig {
                 String.format("certFile=%s", certFile),
                 String.format("keyFile=%s", keyFile),
                 String.format("insecure=%b", insecure),
-                String.format("maxContentLength=%d", maxContentLength),
-                String.format("clientHttp2=%s", clientHttp2),
-                String.format("serverHttp2=%s", serverHttp2));
+                String.format("maxContentLength=%d", maxContentLength));
         return String.format("NitmProxyConfig%n%s",
                              Joiner.on(System.lineSeparator()).join(properties));
     }

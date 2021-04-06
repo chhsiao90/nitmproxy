@@ -1,58 +1,86 @@
 package com.github.chhsiaoninety.nitmproxy.tls;
 
-import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
-import io.netty.handler.codec.http2.Http2SecurityUtil;
+import static io.netty.handler.ssl.ApplicationProtocolNames.HTTP_1_1;
+import static javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm;
+
+import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
+import com.github.chhsiaoninety.nitmproxy.TlsContext;
+
+import java.io.File;
+import java.security.KeyStore;
+import java.util.List;
+
 import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.ApplicationProtocolConfig.Protocol;
 import io.netty.handler.ssl.ApplicationProtocolConfig.SelectedListenerFailureBehavior;
 import io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBehavior;
-import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SupportedCipherSuiteFilter;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
-
 import javax.net.ssl.SSLException;
+import javax.net.ssl.TrustManagerFactory;
 
 public class TlsUtil {
-    public static SslContext ctxForClient(NitmProxyConfig config) throws SSLException {
+
+    private static final TrustManagerFactory TRUST_MANAGER_FACTORY;
+    private static final Exception INIT_TRUST_MANAGER_FACTORY_FAILURE;
+
+    static {
+        TrustManagerFactory trustManagerFactory = null;
+        Exception failure = null;
+        try {
+            trustManagerFactory = TrustManagerFactory.getInstance(getDefaultAlgorithm());
+            trustManagerFactory.init((KeyStore) null);
+        } catch (Exception e) {
+            failure = e;
+        }
+        TRUST_MANAGER_FACTORY = trustManagerFactory;
+        INIT_TRUST_MANAGER_FACTORY_FAILURE = failure;
+    }
+
+    public static SslContext ctxForClient(ConnectionContext context) throws SSLException {
         SslContextBuilder builder = SslContextBuilder
-                .forClient()
-                .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE)
-                .applicationProtocolConfig(applicationProtocolConfig(config, config.isServerHttp2()));
-        if (config.isInsecure()) {
+            .forClient()
+            .protocols("TLSv1.3", "TLSv1.2")
+            .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()));
+        if (context.config().isInsecure()) {
             builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
+        } else if (TRUST_MANAGER_FACTORY != null) {
+            builder.trustManager(TRUST_MANAGER_FACTORY);
         }
         return builder.build();
     }
 
-    public static SslContext ctxForServer(NitmProxyConfig config) throws SSLException {
-        return ctxForServer(config, "localhost");
-    }
-
-    public static SslContext ctxForServer(NitmProxyConfig config, String serverHost) throws SSLException {
-        Certificate certificate = CertUtil.newCert(config.getCertFile(), config.getKeyFile(), serverHost);
+    public static SslContext ctxForServer(ConnectionContext context) throws SSLException {
+        String certFile = new File(context.config().getCertFile()).getAbsolutePath();
+        String keyFile = new File(context.config().getKeyFile()).getAbsolutePath();
+        Certificate certificate = CertUtil.newCert(
+            certFile, keyFile, context.getServerAddr().getHost());
         return SslContextBuilder
-                .forServer(certificate.getKeyPair().getPrivate(), certificate.getChain())
-                .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE)
-                .applicationProtocolConfig(applicationProtocolConfig(config, config.isClientHttp2()))
-                .build();
+            .forServer(certificate.getKeyPair().getPrivate(), certificate.getChain())
+            .protocols("TLSv1.3", "TLSv1.2")
+            .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()))
+            .build();
     }
 
-    private static ApplicationProtocolConfig applicationProtocolConfig(NitmProxyConfig config, boolean http2) {
-        if (http2) {
-            return new ApplicationProtocolConfig(
-                    Protocol.ALPN,
-                    SelectorFailureBehavior.NO_ADVERTISE,
-                    SelectedListenerFailureBehavior.ACCEPT,
-                    ApplicationProtocolNames.HTTP_2,
-                    ApplicationProtocolNames.HTTP_1_1);
-        } else {
-            return new ApplicationProtocolConfig(
-                    Protocol.ALPN,
-                    SelectorFailureBehavior.NO_ADVERTISE,
-                    SelectedListenerFailureBehavior.ACCEPT,
-                    ApplicationProtocolNames.HTTP_1_1);
+    private static ApplicationProtocolConfig applicationProtocolConfig(TlsContext tlsContext) {
+        return new ApplicationProtocolConfig(
+            Protocol.ALPN,
+            SelectorFailureBehavior.NO_ADVERTISE,
+            SelectedListenerFailureBehavior.ACCEPT,
+            alpnProtocols(tlsContext));
+    }
+
+    private static String[] alpnProtocols(TlsContext tlsCtx) {
+        if (tlsCtx.isNegotiated()) {
+            return new String[]{tlsCtx.protocol()};
         }
+        if (tlsCtx.protocolsPromise().isDone()) {
+            List<String> protocols = tlsCtx.protocols();
+            if (!protocols.isEmpty()) {
+                return protocols.toArray(new String[0]);
+            }
+        }
+        return new String[]{HTTP_1_1};
     }
 }

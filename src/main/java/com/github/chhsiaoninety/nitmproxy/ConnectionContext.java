@@ -1,8 +1,11 @@
 package com.github.chhsiaoninety.nitmproxy;
 
+import static java.lang.String.format;
+
 import com.github.chhsiaoninety.nitmproxy.enums.Handler;
 import com.github.chhsiaoninety.nitmproxy.handler.proxy.HttpProxyHandler;
 import com.github.chhsiaoninety.nitmproxy.handler.proxy.SocksProxyHandler;
+
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
@@ -19,9 +22,11 @@ public class ConnectionContext
     private Channel clientChannel;
     private Channel serverChannel;
 
-    public ConnectionContext(NitmProxyMaster master)
-    {
+    private TlsContext tlsCtx;
+
+    public ConnectionContext(NitmProxyMaster master) {
         this.master = master;
+        this.tlsCtx = new TlsContext();
     }
 
     public ConnectionContext withClientAddr(Address clientAddr) {
@@ -52,6 +57,10 @@ public class ConnectionContext
     {
         this.serverChannel = serverChannel;
         return this;
+    }
+
+    public NitmProxyConfig config() {
+        return master.config();
     }
 
     public ChannelHandler proxyHandler() {
@@ -85,11 +94,19 @@ public class ConnectionContext
         }
     }
 
+    public boolean isHttps() {
+        return master.config().getHttpsPorts().contains(serverAddr.getPort());
+    }
+
     public boolean connected() {
         return serverChannel != null;
     }
 
     public ChannelFuture connect(Address address, ChannelHandlerContext fromCtx) {
+        if (serverChannel == null) {
+            tlsCtx.protocols(fromCtx.executor().newPromise());
+            tlsCtx.protocol(fromCtx.executor().newPromise());
+        }
         if (serverChannel != null && (!serverAddr.equals(address) || !serverChannel.isActive())) {
             serverChannel.close();
             serverChannel = null;
@@ -115,17 +132,24 @@ public class ConnectionContext
         return clientChannel;
     }
 
+    public TlsContext tlsCtx() {
+        return tlsCtx;
+    }
+
     @Override
     public String toString() {
-        return String.format("[Client (%s)] <=> [Server (%s)]",
-                             clientAddr, serverAddr);
+        if (serverAddr != null) {
+            return format("[Client (%s)] <=> [Server (%s)]",
+                clientAddr, serverAddr);
+        }
+        return format("[Client (%s)] <=> [PROXY]", clientAddr);
     }
 
     public String toString(boolean client) {
         if (client) {
-            return String.format("[Client (%s)] <=> [PROXY]", clientAddr);
+            return format("[Client (%s)] <=> [PROXY]", clientAddr);
         } else {
-            return String.format("[PROXY] <=> [Server (%s)]", serverAddr);
+            return format("[PROXY] <=> [Server (%s)]", serverAddr);
         }
     }
 }

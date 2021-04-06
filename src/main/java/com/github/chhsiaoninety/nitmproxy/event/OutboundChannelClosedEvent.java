@@ -20,6 +20,6 @@ public class OutboundChannelClosedEvent {
 
     @Override
     public String toString() {
-        return String.format("%s : channelClosed", connectionContext.toString(client));
+        return String.format("%s : channelClosed", connectionContext);
     }
 }

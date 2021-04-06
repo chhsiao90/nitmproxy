@@ -3,7 +3,14 @@ package com.github.chhsiaoninety.nitmproxy.handler.protocol.http1;
 import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
 import com.github.chhsiaoninety.nitmproxy.event.OutboundChannelClosedEvent;
-import io.netty.channel.Channel;
+
+import java.io.IOException;
+import java.util.Deque;
+import java.util.concurrent.ConcurrentLinkedDeque;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
@@ -14,12 +21,6 @@ import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.util.ReferenceCountUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Deque;
-import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Http1BackendHandler.class);
@@ -118,7 +119,7 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
         private void release() {
             while (!pendings.isEmpty()) {
                 RequestPromise requestPromise = pendings.poll();
-                LOGGER.info("{} : {} is dropped", connectionContext.toString(true), requestPromise.request);
+                LOGGER.info("{} : {} is dropped", connectionContext, requestPromise.request);
                 requestPromise.promise.setFailure(new IOException("Cannot send request to server"));
                 ReferenceCountUtil.release(requestPromise.request);
             }
