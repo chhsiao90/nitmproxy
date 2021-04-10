@@ -3,6 +3,7 @@ package com.github.chhsiaoninety.nitmproxy.handler.protocol.tls;
 import static io.netty.util.ReferenceCountUtil.safeRelease;
 import static java.lang.String.format;
 
+import com.github.chhsiaoninety.nitmproxy.Address;
 import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
 import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
 import com.github.chhsiaoninety.nitmproxy.enums.Handler;
@@ -10,15 +11,13 @@ import com.github.chhsiaoninety.nitmproxy.tls.TlsUtil;
 
 import java.util.List;
 
+import io.netty.handler.ssl.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.ssl.ApplicationProtocolNames;
-import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
-import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import javax.net.ssl.SSLException;
 
@@ -34,14 +33,21 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
   }
 
   @Override
+  public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+    super.userEventTriggered(ctx, evt);
+  }
+
+  @Override
   public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
     LOGGER.debug("{} : handlerAdded", connectionContext);
 
     if (!connectionContext.isHttps()) {
       configHttp1(ctx);
     } else {
+//      ctx.pipeline()
+//          .addBefore(ctx.name(), null, new AlpnNegotiateHandler(ctx));
       ctx.pipeline()
-          .addBefore(ctx.name(), null, new AlpnNegotiateHandler(ctx));
+              .addBefore(ctx.name(), null, new SniExtractorHandler(ctx));
     }
   }
 
@@ -116,6 +122,35 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
       LOGGER.debug("Client ALPN lookup with {}", protocols);
       connectionContext.tlsCtx().protocolsPromise().setSuccess(protocols);
       return connectionContext.tlsCtx().protocolPromise();
+    }
+  }
+
+  private class SniExtractorHandler extends AbstractSniHandler<String> {
+
+    private ChannelHandlerContext tlsCtx;
+
+    public SniExtractorHandler(ChannelHandlerContext tlsCtx) {
+      this.tlsCtx = tlsCtx;
+    }
+
+    @Override
+    protected Future<String> lookup(ChannelHandlerContext ctx, String hostname) throws Exception {
+      LOGGER.debug("Client SNI lookup with {}", hostname);
+        connectionContext.tlsCtx().hostnamePromise().setSuccess(hostname);
+      return connectionContext.tlsCtx().hostnamePromise();
+    }
+
+    @Override
+    protected void onLookupComplete(ChannelHandlerContext ctx, String hostname, Future<String> future) throws Exception {
+      if (!future.isSuccess()) {
+        LOGGER.debug("SNI extraction failed with {}", future.cause().getMessage());
+        ctx.close();
+      } else {
+        LOGGER.debug("SNI extraction with {}", future.getNow());
+        connectionContext.withServerAddr(new Address(hostname, connectionContext.getServerAddr().getPort()));
+        ctx.pipeline()
+                .replace(ctx.name(), null, new AlpnNegotiateHandler(tlsCtx));
+      }
     }
   }
 
