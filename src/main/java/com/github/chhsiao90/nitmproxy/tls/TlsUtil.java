@@ -46,6 +46,9 @@ public class TlsUtil {
                     context.tlsCtx().isSupportAlpn() ?
                             applicationProtocolConfig(context.tlsCtx()):
                             ApplicationProtocolConfig.DISABLED);
+        if (context.config().getClientKeyManagerFactory() != null) {
+            builder.keyManager(context.config().getClientKeyManagerFactory());
+        }
         if (context.config().isInsecure()) {
             builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         } else if (TRUST_MANAGER_FACTORY != null) {

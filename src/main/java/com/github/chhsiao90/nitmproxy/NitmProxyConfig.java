@@ -3,6 +3,7 @@ package com.github.chhsiao90.nitmproxy;
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
 import com.google.common.base.Joiner;
 
+import javax.net.ssl.KeyManagerFactory;
 import java.util.Arrays;
 import java.util.List;
 
@@ -17,6 +18,7 @@ public class NitmProxyConfig {
     private String certFile;
     private String keyFile;
     private boolean insecure;
+    private KeyManagerFactory clientKeyManagerFactory;
 
     private int maxContentLength;
 
@@ -99,6 +101,14 @@ public class NitmProxyConfig {
         this.maxContentLength = maxContentLength;
     }
 
+    public KeyManagerFactory getClientKeyManagerFactory() {
+        return clientKeyManagerFactory;
+    }
+
+    public void setClientKeyManagerFactory(KeyManagerFactory clientKeyManagerFactory) {
+        this.clientKeyManagerFactory = clientKeyManagerFactory;
+    }
+
     @Override
     public String toString() {
         List<String> properties = Arrays.asList(
@@ -109,6 +119,7 @@ public class NitmProxyConfig {
                 String.format("certFile=%s", certFile),
                 String.format("keyFile=%s", keyFile),
                 String.format("insecure=%b", insecure),
+                String.format("keyManagerFactory=%b", clientKeyManagerFactory),
                 String.format("maxContentLength=%d", maxContentLength));
         return String.format("NitmProxyConfig%n%s",
                              Joiner.on(System.lineSeparator()).join(properties));

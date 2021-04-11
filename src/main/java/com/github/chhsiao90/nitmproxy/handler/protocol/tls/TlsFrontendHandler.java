@@ -41,11 +41,6 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
 
 
   @Override
-  public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-    super.userEventTriggered(ctx, evt);
-  }
-
-  @Override
   public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
     LOGGER.debug("{} : handlerAdded", connectionContext);
     ctx.pipeline()
