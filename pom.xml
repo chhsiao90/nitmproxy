@@ -6,6 +6,11 @@
   <groupId>com.github.chhsiao90</groupId>
   <artifactId>nitmproxy</artifactId>
   <version>1.0.0-SNAPSHOT</version>
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>9</version>
+  </parent>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.8</maven.compiler.source>
@@ -28,7 +33,21 @@
     <argLine.coverage>-D_</argLine.coverage>
     <main.class>com.github.chhsiao90.nitmproxy.NitmProxy</main.class>
   </properties>
-
+  <developers>
+    <developer>
+      <name>Chun Han Hsiao</name>
+      <email>chhsiao90@gmail.com</email>
+    </developer>
+  </developers>
+  <scm>
+    <url>http://github.com/chhsiao90/nitmproxy</url>
+    <connection>scm:git:git@github.com:chhsiao90/nitmproxy.git</connection>
+    <developerConnection>scm:git:git@github.com:chhsiao90/nitmproxy.git</developerConnection>
+  </scm>
+  <issueManagement>
+    <system>GitHub</system>
+    <url>http://github.com/chhsiao90/modelmapper-module-java8/issues</url>
+  </issueManagement>
   <build>
     <plugins>
       <plugin>
