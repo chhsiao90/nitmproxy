@@ -1,24 +1,5 @@
 package com.github.chhsiaoninety.nitmproxy.handler.protocol.http1;
 
-import com.github.chhsiaoninety.nitmproxy.Address;
-import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
-import com.github.chhsiaoninety.nitmproxy.HandlerProvider;
-import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
-import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerAdapter;
-import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.handler.codec.http.DefaultHttpRequest;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpVersion;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import static com.github.chhsiaoninety.nitmproxy.HttpObjectUtil.requestBytes;
 import static io.netty.util.ReferenceCountUtil.release;
 import static org.junit.Assert.assertEquals;
@@ -29,6 +10,27 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import com.github.chhsiaoninety.nitmproxy.Address;
+import com.github.chhsiaoninety.nitmproxy.ConnectionContext;
+import com.github.chhsiaoninety.nitmproxy.HandlerProvider;
+import com.github.chhsiaoninety.nitmproxy.NitmProxyConfig;
+import com.github.chhsiaoninety.nitmproxy.NitmProxyMaster;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerAdapter;
+import io.netty.channel.embedded.EmbeddedChannel;
+import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpVersion;
 
 public class Http1FrontendHandlerTest {
     private NitmProxyMaster master;
@@ -45,6 +47,7 @@ public class Http1FrontendHandlerTest {
         when(master.config()).thenReturn(new NitmProxyConfig());
         when(master.provider()).thenReturn(provider);
         when(provider.http1BackendHandler(any(), any())).thenReturn(new ChannelHandlerAdapter() {});
+        when(provider.frontendTlsHandler(any(), any())).thenReturn(new ChannelHandlerAdapter() {});
 
         inboundChannel = new EmbeddedChannel();
     }

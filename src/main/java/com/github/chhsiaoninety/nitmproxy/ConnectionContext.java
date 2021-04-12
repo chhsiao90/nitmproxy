@@ -106,7 +106,6 @@ public class ConnectionContext
         if (serverChannel == null) {
             tlsCtx.protocols(fromCtx.executor().newPromise());
             tlsCtx.protocol(fromCtx.executor().newPromise());
-            tlsCtx.hostname(fromCtx.executor().newPromise());
         }
         if (serverChannel != null && (!serverAddr.equals(address) || !serverChannel.isActive())) {
             serverChannel.close();
