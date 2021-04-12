@@ -77,7 +77,7 @@ public class TlsUtil {
         }
         if (tlsCtx.protocolsPromise().isDone()) {
             List<String> protocols = tlsCtx.protocols();
-            if (!protocols.isEmpty()) {
+            if (protocols != null && !protocols.isEmpty()) {
                 return protocols.toArray(new String[0]);
             }
         }
