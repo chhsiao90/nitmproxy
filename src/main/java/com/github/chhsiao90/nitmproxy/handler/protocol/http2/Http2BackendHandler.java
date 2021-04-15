@@ -10,11 +10,13 @@ import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Maps;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -33,6 +35,7 @@ import io.netty.handler.codec.http2.Http2FrameListener;
 import io.netty.handler.codec.http2.Http2FrameLogger;
 import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2Settings;
+import io.netty.handler.logging.LogLevel;
 
 public class Http2BackendHandler
     extends ChannelDuplexHandler
@@ -51,6 +54,38 @@ public class Http2BackendHandler
     this.connectionContext = connectionContext;
   }
 
+  private static class DataLogger extends Http2FrameLogger {
+
+    private final ConnectionContext connectionContext;
+
+    public DataLogger(LogLevel level, ConnectionContext connectionContext) {
+      super(level);
+      this.connectionContext = connectionContext;
+    }
+
+    private void logBytes(ByteBuf byteBuf, Consumer<byte[]> writer) {
+      byte[] bytes = ByteBufUtil.getBytes(byteBuf.duplicate());
+      writer.accept(bytes);
+    }
+
+    @Override
+    public void logData(Direction direction, ChannelHandlerContext ctx, int streamId, ByteBuf data, int padding, boolean endStream) {
+      switch (direction) {
+        case INBOUND:
+          if (connectionContext.config().getResponseLogger() != null) {
+            logBytes(data, connectionContext.config().getResponseLogger());
+          }
+          break;
+        case OUTBOUND:
+          if (connectionContext.config().getRequestLogger() != null) {
+            logBytes(data, connectionContext.config().getRequestLogger());
+          }
+          break;
+      }
+      super.logData(direction, ctx, streamId, data, padding, endStream);
+    }
+  }
+
   @Override
   public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
     LOGGER.debug("{} : handlerAdded", connectionContext);
@@ -59,7 +94,7 @@ public class Http2BackendHandler
     http2ConnectionHandler = new Http2ConnectionHandlerBuilder()
         .connection(http2Connection)
         .frameListener(this)
-        .frameLogger(new Http2FrameLogger(DEBUG))
+        .frameLogger(new DataLogger(DEBUG, connectionContext))
         .build();
     ctx.pipeline()
         .addBefore(ctx.name(), null, http2ConnectionHandler);

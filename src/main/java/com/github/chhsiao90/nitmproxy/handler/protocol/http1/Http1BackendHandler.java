@@ -4,13 +4,17 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.OutboundChannelClosedEvent;
 
-import java.io.IOException;
-import java.util.Deque;
-import java.util.concurrent.ConcurrentLinkedDeque;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.Deque;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.function.Consumer;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
@@ -32,6 +36,37 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
     private DelayOutboundHandler delayOutboundHandler;
 
     private volatile HttpRequest currentRequest;
+
+    private static class DataLogger extends ChannelDuplexHandler {
+
+        private final ConnectionContext connectionContext;
+
+        public DataLogger(ConnectionContext connectionContext) {
+            this.connectionContext = connectionContext;
+        }
+
+        private void logBytes(ByteBuf byteBuf, Consumer<byte[]> writer) {
+            byte[] bytes = ByteBufUtil.getBytes(byteBuf.duplicate());
+            writer.accept(bytes);
+        }
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            if (connectionContext.config().getResponseLogger() != null) {
+                logBytes(((ByteBuf) msg), connectionContext.config().getResponseLogger());
+            }
+            super.channelRead(ctx, msg);
+        }
+
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            if (connectionContext.config().getRequestLogger() != null) {
+                logBytes(((ByteBuf) msg), connectionContext.config().getRequestLogger());
+            }
+            super.write(ctx, msg, promise);
+        }
+
+    }
 
     public Http1BackendHandler(NitmProxyMaster master, ConnectionContext connectionContext) {
         this.master = master;
@@ -58,6 +93,7 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
         LOGGER.info("{} : handlerAdded", connectionContext);
 
         ctx.pipeline()
+           .addBefore(ctx.name(), null, new DataLogger(connectionContext))
            .addBefore(ctx.name(), null, new HttpClientCodec())
            .addBefore(ctx.name(), null, delayOutboundHandler);
     }

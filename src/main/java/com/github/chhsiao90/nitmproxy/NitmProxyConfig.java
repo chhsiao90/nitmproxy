@@ -6,6 +6,7 @@ import com.google.common.base.Joiner;
 import javax.net.ssl.KeyManagerFactory;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class NitmProxyConfig {
     private ProxyMode proxyMode;
@@ -21,6 +22,9 @@ public class NitmProxyConfig {
     private KeyManagerFactory clientKeyManagerFactory;
 
     private int maxContentLength;
+
+    private Consumer<byte[]> requestLogger;
+    private Consumer<byte[]> responseLogger;
 
     // Default values
     public NitmProxyConfig() {
@@ -107,6 +111,22 @@ public class NitmProxyConfig {
 
     public void setClientKeyManagerFactory(KeyManagerFactory clientKeyManagerFactory) {
         this.clientKeyManagerFactory = clientKeyManagerFactory;
+    }
+
+    public Consumer<byte[]> getRequestLogger() {
+        return requestLogger;
+    }
+
+    public void setRequestLogger(Consumer<byte[]> requestLogger) {
+        this.requestLogger = requestLogger;
+    }
+
+    public Consumer<byte[]> getResponseLogger() {
+        return responseLogger;
+    }
+
+    public void setResponseLogger(Consumer<byte[]> responseLogger) {
+        this.responseLogger = responseLogger;
     }
 
     @Override
