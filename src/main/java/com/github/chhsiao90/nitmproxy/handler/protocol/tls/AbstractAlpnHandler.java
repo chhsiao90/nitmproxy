@@ -119,7 +119,7 @@ public abstract class AbstractAlpnHandler<T> extends SslClientHelloHandler<T> {
   }
 
   protected abstract void onLookupComplete(ChannelHandlerContext ctx,
-      List<String> hostname, Future<T> future) throws Exception;
+      List<String> protocols, Future<T> future) throws Exception;
 
   private static void fireAlpnCompletionEvent(ChannelHandlerContext ctx, List<String> protocols,
       Future<?> future) {
