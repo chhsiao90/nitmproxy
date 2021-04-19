@@ -9,17 +9,20 @@ import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.enums.Handler;
 import com.github.chhsiao90.nitmproxy.tls.TlsUtil;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.ssl.AbstractSniHandler;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
+import io.netty.handler.ssl.SslClientHelloHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import javax.net.ssl.SSLException;
@@ -43,14 +46,10 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
   @Override
   public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
     LOGGER.debug("{} : handlerAdded", connectionContext);
-
-    if (!connectionContext.isHttps()) {
-      configHttp1(ctx);
-    } else {
-      ctx.pipeline()
-          .addBefore(ctx.name(), null, new SniExtractorHandler())
-          .addBefore(ctx.name(), null, new AlpnNegotiateHandler(ctx));
-    }
+    ctx.pipeline()
+            .addBefore(ctx.name(), null, new DetectSslHandler())
+            .addBefore(ctx.name(), null, new SniExtractorHandler())
+            .addBefore(ctx.name(), null, new AlpnNegotiateHandler(ctx));
   }
 
   @Override
@@ -86,6 +85,36 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
 
   private void configHttp2(ChannelHandlerContext ctx) {
     ctx.pipeline().replace(this, null, connectionContext.handler(Handler.HTTP2_FRONTEND));
+  }
+
+  private class DetectSslHandler extends SslClientHelloHandler<Boolean> {
+
+    @Override
+    protected Future<Boolean> lookup(ChannelHandlerContext ctx, ByteBuf byteBuf) throws Exception {
+      boolean ssl = byteBuf != null;
+      LOGGER.debug("SSL detection with {}", ssl);
+      return ctx.executor().newSucceededFuture(ssl);
+    }
+
+    @Override
+    protected void onLookupComplete(ChannelHandlerContext ctx, Future<Boolean> future) throws Exception {
+      if (!future.isSuccess()) {
+        LOGGER.debug("SSL detection failed with {}", future.cause().getMessage());
+        ctx.close();
+      }
+      else {
+        if (!future.getNow()) {
+          connectionContext.tlsCtx().setPlain(true);
+          connectionContext.tlsCtx().protocolsPromise().setSuccess(Collections.singletonList(ApplicationProtocolNames.HTTP_1_1));
+          ctx.pipeline().remove(DetectSslHandler.class);
+          ctx.pipeline().remove(AlpnNegotiateHandler.class);
+          ctx.pipeline().remove(SniExtractorHandler.class);
+          configHttp1(ctx);
+        } else {
+          ctx.pipeline().remove(ctx.name());
+        }
+      }
+    }
   }
 
   private class AlpnNegotiateHandler extends AbstractAlpnHandler<String> {

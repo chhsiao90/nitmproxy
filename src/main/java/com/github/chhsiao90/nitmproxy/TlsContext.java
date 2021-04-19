@@ -7,6 +7,8 @@ import java.util.List;
 import io.netty.util.concurrent.Promise;
 
 public class TlsContext {
+
+  private boolean plain;
   private Promise<List<String>> protocols;
   private Promise<String> protocol;
 
@@ -55,5 +57,13 @@ public class TlsContext {
 
   public boolean isNegotiated() {
     return protocol.isDone();
+  }
+
+  public boolean isPlain() {
+    return plain;
+  }
+
+  public void setPlain(boolean plain) {
+    this.plain = plain;
   }
 }

@@ -22,6 +22,7 @@ import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.ReferenceCountUtil;
+
 import javax.net.ssl.SSLException;
 
 public class TlsBackendHandler extends ChannelDuplexHandler {
@@ -48,7 +49,11 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
 
     connectionContext.tlsCtx().protocolsPromise().addListener(future -> {
       if (future.isSuccess()) {
-        configSsl(ctx);
+        if (connectionContext.tlsCtx().isPlain()) {
+          configHttp1(ctx);
+        } else {
+          configSsl(ctx);
+        }
       } else {
         ctx.close();
       }
