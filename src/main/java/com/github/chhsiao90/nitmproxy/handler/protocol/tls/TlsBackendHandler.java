@@ -49,7 +49,7 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
 
     connectionContext.tlsCtx().protocolsPromise().addListener(future -> {
       if (future.isSuccess()) {
-        if (connectionContext.tlsCtx().isPlain()) {
+        if (!connectionContext.tlsCtx().isEnabled()) {
           configHttp1(ctx);
         } else {
           configSsl(ctx);
@@ -130,8 +130,12 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
   public void configSsl(ChannelHandlerContext ctx) throws SSLException {
     SslHandler sslHandler = sslHandler(ctx.alloc());
     ctx.pipeline()
-        .addBefore(ctx.name(), null, sslHandler)
-        .addBefore(ctx.name(), null, new AlpnHandler(ctx));
+        .addBefore(ctx.name(), null, sslHandler);
+    if (connectionContext.tlsCtx().isSupportAlpn()) {
+        ctx.pipeline().addBefore(ctx.name(), null, new AlpnHandler(ctx));
+    } else {
+      configHttp1(ctx);
+    }
   }
 
   private class AlpnHandler extends ApplicationProtocolNegotiationHandler {
