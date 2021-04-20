@@ -14,7 +14,6 @@ public class NitmProxyConfig {
     private int port;
 
     // TLS related
-    private List<Integer> httpsPorts;
     private String certFile;
     private String keyFile;
     private boolean insecure;
@@ -29,7 +28,6 @@ public class NitmProxyConfig {
         host = "127.0.0.1";
         port = 8080;
 
-        httpsPorts = Arrays.asList(443, 8443);
         certFile = "server.pem";
         keyFile = "key.pem";
         insecure = false;
@@ -59,14 +57,6 @@ public class NitmProxyConfig {
 
     public void setPort(int port) {
         this.port = port;
-    }
-
-    public List<Integer> getHttpsPorts() {
-        return httpsPorts;
-    }
-
-    public void setHttpsPorts(List<Integer> httpsPorts) {
-        this.httpsPorts = httpsPorts;
     }
 
     public String getCertFile() {
@@ -115,7 +105,6 @@ public class NitmProxyConfig {
                 String.format("proxyMode=%s", proxyMode),
                 String.format("host=%s", host),
                 String.format("port=%s", port),
-                String.format("httpsPorts=%s", httpsPorts),
                 String.format("certFile=%s", certFile),
                 String.format("keyFile=%s", keyFile),
                 String.format("insecure=%b", insecure),

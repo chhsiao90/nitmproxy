@@ -112,12 +112,12 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
         if (!future.getNow()) {
           connectionContext.tlsCtx().setEnabled(false);
           connectionContext.tlsCtx().protocolsPromise().setSuccess(Collections.singletonList(ApplicationProtocolNames.HTTP_1_1));
+          configHttp1(tlsCtx);
           ctx.pipeline().remove(SniExtractorHandler.class);
           if (connectionContext.tlsCtx().isSupportAlpn()) {
             ctx.pipeline().remove(AlpnNegotiateHandler.class);
           }
           ctx.pipeline().remove(ctx.name());
-          configHttp1(tlsCtx);
         } else {
           ctx.pipeline().remove(ctx.name());
         }
