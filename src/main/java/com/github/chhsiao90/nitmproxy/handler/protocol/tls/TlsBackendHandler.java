@@ -22,6 +22,7 @@ import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.ReferenceCountUtil;
+
 import javax.net.ssl.SSLException;
 
 public class TlsBackendHandler extends ChannelDuplexHandler {
@@ -48,7 +49,11 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
 
     connectionContext.tlsCtx().protocolsPromise().addListener(future -> {
       if (future.isSuccess()) {
-        configSsl(ctx);
+        if (!connectionContext.tlsCtx().isEnabled()) {
+          configHttp1(ctx);
+        } else {
+          configSsl(ctx);
+        }
       } else {
         ctx.close();
       }
@@ -125,8 +130,12 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
   public void configSsl(ChannelHandlerContext ctx) throws SSLException {
     SslHandler sslHandler = sslHandler(ctx.alloc());
     ctx.pipeline()
-        .addBefore(ctx.name(), null, sslHandler)
-        .addBefore(ctx.name(), null, new AlpnHandler(ctx));
+        .addBefore(ctx.name(), null, sslHandler);
+    if (connectionContext.tlsCtx().isSupportAlpn()) {
+        ctx.pipeline().addBefore(ctx.name(), null, new AlpnHandler(ctx));
+    } else {
+      configHttp1(ctx);
+    }
   }
 
   private class AlpnHandler extends ApplicationProtocolNegotiationHandler {

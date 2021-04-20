@@ -24,7 +24,7 @@
     <junit.version>4.13.1</junit.version>
     <assertj.version>3.18.1</assertj.version>
     <mockito.version>3.6.28</mockito.version>
-    <jetty.alpnAgent.version>2.0.6</jetty.alpnAgent.version>
+    <jetty.alpnAgent.version>2.0.10</jetty.alpnAgent.version>
     <jetty.alpnAgent.path>"${settings.localRepository}"/org/mortbay/jetty/alpn/jetty-alpn-agent/${jetty.alpnAgent.version}/jetty-alpn-agent-${jetty.alpnAgent.version}.jar</jetty.alpnAgent.path>
     <argLine.alpnAgent>-javaagent:${jetty.alpnAgent.path}</argLine.alpnAgent>
     <argLine.leak>-D_</argLine.leak>
@@ -113,6 +113,12 @@
     </profile>
   </profiles>
   <dependencies>
+    <dependency>
+      <groupId>org.mortbay.jetty.alpn</groupId>
+      <artifactId>jetty-alpn-agent</artifactId>
+      <version>${jetty.alpnAgent.version}</version>
+      <scope>provided</scope>
+    </dependency>
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-all</artifactId>

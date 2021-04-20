@@ -41,8 +41,11 @@ public class TlsUtil {
     public static SslContext ctxForClient(ConnectionContext context) throws SSLException {
         SslContextBuilder builder = SslContextBuilder
             .forClient()
-            .protocols("TLSv1.3", "TLSv1.2")
-            .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()));
+            .protocols(context.tlsCtx().getTlsProtocols());
+            builder.applicationProtocolConfig(
+                    context.tlsCtx().isSupportAlpn() ?
+                            applicationProtocolConfig(context.tlsCtx()):
+                            ApplicationProtocolConfig.DISABLED);
         if (context.config().isInsecure()) {
             builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         } else if (TRUST_MANAGER_FACTORY != null) {
@@ -58,8 +61,10 @@ public class TlsUtil {
             certFile, keyFile, context.getServerAddr().getHost());
         return SslContextBuilder
             .forServer(certificate.getKeyPair().getPrivate(), certificate.getChain())
-            .protocols("TLSv1.3", "TLSv1.2")
-            .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()))
+            .protocols(context.tlsCtx().getTlsProtocols())
+            .applicationProtocolConfig(context.tlsCtx().isSupportAlpn() ?
+                    applicationProtocolConfig(context.tlsCtx()):
+                    ApplicationProtocolConfig.DISABLED)
             .build();
     }
 
