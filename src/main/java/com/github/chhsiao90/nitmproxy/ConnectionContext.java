@@ -94,10 +94,6 @@ public class ConnectionContext
         }
     }
 
-    public boolean isHttps() {
-        return master.config().getHttpsPorts().contains(serverAddr.getPort());
-    }
-
     public boolean connected() {
         return serverChannel != null;
     }
