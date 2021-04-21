@@ -23,29 +23,24 @@ import javax.net.ssl.TrustManagerFactory;
 public class TlsUtil {
 
     private static final TrustManagerFactory TRUST_MANAGER_FACTORY;
-    private static final Exception INIT_TRUST_MANAGER_FACTORY_FAILURE;
 
     static {
         TrustManagerFactory trustManagerFactory = null;
-        Exception failure = null;
         try {
             trustManagerFactory = TrustManagerFactory.getInstance(getDefaultAlgorithm());
             trustManagerFactory.init((KeyStore) null);
-        } catch (Exception e) {
-            failure = e;
+        } catch (Exception ignore) {
+            // ignore
         }
         TRUST_MANAGER_FACTORY = trustManagerFactory;
-        INIT_TRUST_MANAGER_FACTORY_FAILURE = failure;
     }
 
     public static SslContext ctxForClient(ConnectionContext context) throws SSLException {
         SslContextBuilder builder = SslContextBuilder
             .forClient()
-            .protocols(context.tlsCtx().getTlsProtocols());
-            builder.applicationProtocolConfig(
-                    context.tlsCtx().isSupportAlpn() ?
-                            applicationProtocolConfig(context.tlsCtx()):
-                            ApplicationProtocolConfig.DISABLED);
+            .protocols(context.config().getTlsProtocols())
+            .sslContextProvider(context.config().getSslProvider())
+            .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()));
         if (context.config().getClientKeyManagerFactory() != null) {
             builder.keyManager(context.config().getClientKeyManagerFactory());
         }
@@ -64,10 +59,9 @@ public class TlsUtil {
             certFile, keyFile, context.getServerAddr().getHost());
         return SslContextBuilder
             .forServer(certificate.getKeyPair().getPrivate(), certificate.getChain())
-            .protocols(context.tlsCtx().getTlsProtocols())
-            .applicationProtocolConfig(context.tlsCtx().isSupportAlpn() ?
-                    applicationProtocolConfig(context.tlsCtx()):
-                    ApplicationProtocolConfig.DISABLED)
+            .protocols(context.config().getTlsProtocols())
+            .sslContextProvider(context.config().getSslProvider())
+            .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()))
             .build();
     }
 

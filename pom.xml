@@ -129,6 +129,7 @@
       <artifactId>${tcnative.artifactId}</artifactId>
       <version>${tcnative.version}</version>
       <classifier>${tcnative.classifier}</classifier>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>

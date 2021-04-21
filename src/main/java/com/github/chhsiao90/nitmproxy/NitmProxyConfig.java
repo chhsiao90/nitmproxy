@@ -1,11 +1,16 @@
 package com.github.chhsiao90.nitmproxy;
 
+import static java.lang.String.format;
+import static java.lang.System.lineSeparator;
+import static java.util.Arrays.asList;
+
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
 import com.google.common.base.Joiner;
 
-import javax.net.ssl.KeyManagerFactory;
-import java.util.Arrays;
+import java.security.Provider;
 import java.util.List;
+
+import javax.net.ssl.KeyManagerFactory;
 
 public class NitmProxyConfig {
     private ProxyMode proxyMode;
@@ -17,6 +22,8 @@ public class NitmProxyConfig {
     private String certFile;
     private String keyFile;
     private boolean insecure;
+    private Provider sslProvider;
+    private List<String> tlsProtocols;
     private KeyManagerFactory clientKeyManagerFactory;
 
     private int maxContentLength;
@@ -31,6 +38,7 @@ public class NitmProxyConfig {
         certFile = "server.pem";
         keyFile = "key.pem";
         insecure = false;
+        tlsProtocols = asList("TLSv1.3", "TLSv1.2");
 
         maxContentLength = 1024 * 1024;
     }
@@ -83,12 +91,20 @@ public class NitmProxyConfig {
         this.insecure = insecure;
     }
 
-    public int getMaxContentLength() {
-        return maxContentLength;
+    public Provider getSslProvider() {
+        return sslProvider;
     }
 
-    public void setMaxContentLength(int maxContentLength) {
-        this.maxContentLength = maxContentLength;
+    public void setSslProvider(Provider sslProvider) {
+        this.sslProvider = sslProvider;
+    }
+
+    public List<String> getTlsProtocols() {
+        return tlsProtocols;
+    }
+
+    public void setTlsProtocols(List<String> tlsProtocols) {
+        this.tlsProtocols = tlsProtocols;
     }
 
     public KeyManagerFactory getClientKeyManagerFactory() {
@@ -99,18 +115,27 @@ public class NitmProxyConfig {
         this.clientKeyManagerFactory = clientKeyManagerFactory;
     }
 
+    public int getMaxContentLength() {
+        return maxContentLength;
+    }
+
+    public void setMaxContentLength(int maxContentLength) {
+        this.maxContentLength = maxContentLength;
+    }
+
     @Override
     public String toString() {
-        List<String> properties = Arrays.asList(
-                String.format("proxyMode=%s", proxyMode),
-                String.format("host=%s", host),
-                String.format("port=%s", port),
-                String.format("certFile=%s", certFile),
-                String.format("keyFile=%s", keyFile),
-                String.format("insecure=%b", insecure),
-                String.format("keyManagerFactory=%b", clientKeyManagerFactory),
-                String.format("maxContentLength=%d", maxContentLength));
-        return String.format("NitmProxyConfig%n%s",
-                             Joiner.on(System.lineSeparator()).join(properties));
+        List<String> properties = asList(
+                format("proxyMode=%s", proxyMode),
+                format("host=%s", host),
+                format("port=%s", port),
+                format("certFile=%s", certFile),
+                format("keyFile=%s", keyFile),
+                format("insecure=%b", insecure),
+                format("tlsProtocols=%s", tlsProtocols),
+                format("sslProvider=%s", sslProvider),
+                format("keyManagerFactory=%b", clientKeyManagerFactory),
+                format("maxContentLength=%d", maxContentLength));
+        return format("NitmProxyConfig%n%s", Joiner.on(lineSeparator()).join(properties));
     }
 }
