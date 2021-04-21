@@ -104,7 +104,7 @@ public class Http2FrontendHandlerTest {
             @Override
             public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
                     throws Exception {
-                super.write(ctx, msg, promise);
+                ctx.writeAndFlush(msg, promise);
                 if (isFrame(msg, Http2HeadersFrame.class)) {
                     latch.countDown();
                 }
@@ -136,7 +136,7 @@ public class Http2FrontendHandlerTest {
             @Override
             public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
                     throws Exception {
-                super.write(ctx, msg, promise);
+                ctx.writeAndFlush(msg, promise);
                 if (isFrame(msg, Http2DataFrame.class)) {
                     latch.countDown();
                 }
