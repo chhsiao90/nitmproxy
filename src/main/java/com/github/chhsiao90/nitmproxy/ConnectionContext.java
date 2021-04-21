@@ -12,8 +12,7 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 
-public class ConnectionContext
-{
+public class ConnectionContext {
     private NitmProxyMaster master;
 
     private Address clientAddr;
@@ -47,14 +46,12 @@ public class ConnectionContext
         return serverAddr;
     }
 
-    public ConnectionContext withClientChannel(Channel clientChannel)
-    {
+    public ConnectionContext withClientChannel(Channel clientChannel) {
         this.clientChannel = clientChannel;
         return this;
     }
 
-    public ConnectionContext withServerChannel(Channel serverChannel)
-    {
+    public ConnectionContext withServerChannel(Channel serverChannel) {
         this.serverChannel = serverChannel;
         return this;
     }
@@ -65,32 +62,32 @@ public class ConnectionContext
 
     public ChannelHandler proxyHandler() {
         switch (master.config().getProxyMode()) {
-            case HTTP:
-                return new HttpProxyHandler(master, this);
-            case SOCKS:
-                return new SocksProxyHandler(master, this);
-            default:
-                throw new IllegalStateException("No proxy mode available: " + master.config().getProxyMode());
+        case HTTP:
+            return new HttpProxyHandler(master, this);
+        case SOCKS:
+            return new SocksProxyHandler(master, this);
+        default:
+            throw new IllegalStateException("No proxy mode available: " + master.config().getProxyMode());
         }
     }
 
     public ChannelHandler handler(Handler handler) {
         HandlerProvider handlerProvider = master.provider();
         switch (handler) {
-            case HTTP1_BACKEND:
-                return handlerProvider.http1BackendHandler(master, this);
-            case HTTP1_FRONTEND:
-                return handlerProvider.http1FrontendHandler(master, this);
-            case HTTP2_BACKEND:
-                return handlerProvider.http2BackendHandler(master, this);
-            case HTTP2_FRONTEND:
-                return handlerProvider.http2FrontendHandler(master, this);
-            case TLS_BACKEND:
-                return handlerProvider.backendTlsHandler(master, this);
-            case TLS_FRONTEND:
-                return handlerProvider.frontendTlsHandler(master, this);
-            default:
-                throw new IllegalStateException("No handler found with: " + handler);
+        case HTTP1_BACKEND:
+            return handlerProvider.http1BackendHandler(master, this);
+        case HTTP1_FRONTEND:
+            return handlerProvider.http1FrontendHandler(master, this);
+        case HTTP2_BACKEND:
+            return handlerProvider.http2BackendHandler(master, this);
+        case HTTP2_FRONTEND:
+            return handlerProvider.http2FrontendHandler(master, this);
+        case TLS_BACKEND:
+            return handlerProvider.backendTlsHandler(master, this);
+        case TLS_FRONTEND:
+            return handlerProvider.frontendTlsHandler(master, this);
+        default:
+            throw new IllegalStateException("No handler found with: " + handler);
         }
     }
 
@@ -136,7 +133,7 @@ public class ConnectionContext
     public String toString() {
         if (serverAddr != null) {
             return format("[Client (%s)] <=> [Server (%s)]",
-                clientAddr, serverAddr);
+                          clientAddr, serverAddr);
         }
         return format("[Client (%s)] <=> [PROXY]", clientAddr);
     }

@@ -8,62 +8,61 @@ import io.netty.util.concurrent.Promise;
 
 public class TlsContext {
 
-  private boolean enabled = true;
-  private Promise<List<String>> protocols;
-  private Promise<String> protocol;
+    private boolean enabled = true;
+    private Promise<List<String>> protocols;
+    private Promise<String> protocol;
 
-  public TlsContext protocols(Promise<List<String>> protocols) {
-    this.protocols = protocols;
-    return this;
-  }
-
-  /**
-   * Get the ALPN protocols sent from the client.
-   *
-   * @return the protocols
-   */
-  public List<String> protocols() {
-    if (!protocols.isDone()) {
-      throw new TlsException("Alpn protocols not resolved before accessing");
+    public TlsContext protocols(Promise<List<String>> protocols) {
+        this.protocols = protocols;
+        return this;
     }
-    return protocols.getNow();
-  }
 
-  public Promise<List<String>> protocolsPromise() {
-    return protocols;
-  }
-
-
-  public TlsContext protocol(Promise<String> protocol) {
-    this.protocol = protocol;
-    return this;
-  }
-
-  /**
-   * Get the negotiated protocol.
-   *
-   * @return the protocol
-   */
-  public String protocol() {
-    if (!protocol.isDone()) {
-      throw new TlsException("Alpn protocol not negotiated before accessing");
+    /**
+     * Get the ALPN protocols sent from the client.
+     *
+     * @return the protocols
+     */
+    public List<String> protocols() {
+        if (!protocols.isDone()) {
+            throw new TlsException("Alpn protocols not resolved before accessing");
+        }
+        return protocols.getNow();
     }
-    return protocol.getNow();
-  }
 
-  public Promise<String> protocolPromise() {
-    return protocol;
-  }
+    public Promise<List<String>> protocolsPromise() {
+        return protocols;
+    }
 
-  public boolean isNegotiated() {
-    return protocol.isDone();
-  }
+    public TlsContext protocol(Promise<String> protocol) {
+        this.protocol = protocol;
+        return this;
+    }
 
-  public boolean isEnabled() {
-    return enabled;
-  }
+    /**
+     * Get the negotiated protocol.
+     *
+     * @return the protocol
+     */
+    public String protocol() {
+        if (!protocol.isDone()) {
+            throw new TlsException("Alpn protocol not negotiated before accessing");
+        }
+        return protocol.getNow();
+    }
 
-  public void setEnabled(boolean enabled) {
-    this.enabled = enabled;
-  }
+    public Promise<String> protocolPromise() {
+        return protocol;
+    }
+
+    public boolean isNegotiated() {
+        return protocol.isDone();
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }
