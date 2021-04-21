@@ -104,4 +104,12 @@ public class Http2FrameWrapper<T extends Http2Frame> {
             encoder.writeSettings(ctx, settingsFrame.settings(), promise);
         }
     }
+
+    @Override
+    public String toString() {
+        return "Http2FrameWrapper{" +
+               "streamId=" + streamId +
+               ", frame=" + frame +
+               '}';
+    }
 }
