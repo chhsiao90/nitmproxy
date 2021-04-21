@@ -41,3 +41,19 @@ usage: nitmproxy [--cert <CERTIFICATE>] [--clientNoHttp2] [-h <HOST>] [-k]
 ### Coding Style
 
 We are using same coding style with netty, please follow the instructions from the [netty#Setting up development environment](https://netty.io/wiki/setting-up-development-environment.html) to setup.
+
+## FAQ
+
+### Android
+
+The built-in [Conscrypt](https://github.com/google/conscrypt) in the Android is not compatible with [Netty](https://github.com/netty/netty). The easiest way to fix is to add Conscrypt manually.
+
+**Add conscrypt-android dependency**
+
+https://search.maven.org/artifact/org.conscrypt/conscrypt-android
+
+**Configure Conscrypt SSL provider**
+
+```java
+config.setSslProvider(Conscrypt.newProvider());
+```
