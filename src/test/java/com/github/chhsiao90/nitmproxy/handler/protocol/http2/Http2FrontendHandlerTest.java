@@ -65,9 +65,11 @@ public class Http2FrontendHandlerTest {
     public void setUp() throws Exception {
         NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
-        connectionContext = new ConnectionContext(master);
 
         targetChannel = new EmbeddedChannel();
+        connectionContext = new ConnectionContext(master)
+                .withServerAddr(new Address("localhost", 8080))
+                .withServerChannel(targetChannel);
     }
 
     @After
@@ -193,12 +195,15 @@ public class Http2FrontendHandlerTest {
             @Override
             protected void initChannel(Channel ch) throws Exception {
                 ChannelPipeline p = ch.pipeline();
+                connectionContext
+                        .withClientAddr(new Address("localhost", 8080))
+                        .withClientChannel(ch);
                 p.addLast(new Http2ConnectionHandlerBuilder()
-                                  .server(false)
-                                  .frameListener(new Http2FrameAdapter())
-                                  .validateHeaders(false)
-                                  .gracefulShutdownTimeoutMillis(0)
-                                  .build());
+                        .server(false)
+                        .frameListener(new Http2FrameAdapter())
+                        .validateHeaders(false)
+                        .gracefulShutdownTimeoutMillis(0)
+                        .build());
                 p.addLast(new ChannelInboundHandlerAdapter() {
                     @Override
                     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
@@ -219,12 +224,6 @@ public class Http2FrontendHandlerTest {
         assertTrue(prefaceWrittenLatch.await(DEFAULT_AWAIT_TIMEOUT_SECONDS, SECONDS));
         http2Client = clientChannel.pipeline().get(Http2ConnectionHandler.class);
         assertTrue(serverInitLatch.await(DEFAULT_AWAIT_TIMEOUT_SECONDS, SECONDS));
-
-        connectionContext
-                .withClientAddr(new Address("localhost", 8080))
-                .withClientChannel(clientChannel)
-                .withServerAddr(new Address("localhost", 8080))
-                .withServerChannel(targetChannel);
     }
 
     private static Http2Headers dummyHeaders() {
