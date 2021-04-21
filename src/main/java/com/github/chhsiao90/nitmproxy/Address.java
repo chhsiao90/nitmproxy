@@ -1,5 +1,7 @@
 package com.github.chhsiao90.nitmproxy;
 
+import java.util.Objects;
+
 public class Address {
     private String host;
     private int port;
@@ -31,8 +33,7 @@ public class Address {
         if (port != address.port) {
             return false;
         }
-        return host != null? host.equals(address.host) : address.host == null;
-
+        return Objects.equals(host, address.host);
     }
 
     @Override

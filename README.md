@@ -3,7 +3,7 @@
 An experimental proxy server based on [netty](https://github.com/netty/netty).
 That want to show how fast the netty is, and how the API design of netty is pretty.
 
-### Start nitmproxy
+## Start nitmproxy
 ```
 > ./nitmproxy.sh --help
 usage: nitmproxy [--cert <CERTIFICATE>] [--clientNoHttp2] [-h <HOST>] [-k]
@@ -16,6 +16,8 @@ usage: nitmproxy [--cert <CERTIFICATE>] [--clientNoHttp2] [-h <HOST>] [-k]
  -m,--mode <MODE>          proxy mode(HTTP, SOCKS), default: HTTP
  -p,--port <PORT>          listening port, default: 8080
 ```
+
+## Features
 
 ### Support Proxy
 - HTTP Proxy
@@ -31,3 +33,9 @@ usage: nitmproxy [--cert <CERTIFICATE>] [--clientNoHttp2] [-h <HOST>] [-k]
 ### Support Functionality
 - Display network traffic
 - Modify network traffic (WIP)
+
+## Development
+
+### Coding Style
+
+We are using same coding style with netty, please follow the instructions from the [netty#Setting up development environment](https://netty.io/wiki/setting-up-development-environment.html) to setup.

@@ -45,7 +45,6 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
         this.master = master;
         this.connectionContext = connectionContext;
         this.tunneled = connectionContext.connected();
-
     }
 
     @Override
@@ -55,8 +54,8 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
         httpServerCodec = new HttpServerCodec();
         httpObjectAggregator = new HttpObjectAggregator(master.config().getMaxContentLength());
         ctx.pipeline()
-           .addBefore(ctx.name(), null, httpServerCodec)
-           .addBefore(ctx.name(), null, httpObjectAggregator);
+            .addBefore(ctx.name(), null, httpServerCodec)
+            .addBefore(ctx.name(), null, httpObjectAggregator);
     }
 
     @Override
@@ -108,12 +107,12 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
         });
 
         FullHttpResponse response =
-            new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
+                new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
         LOGGER.debug("{} : {}", connectionContext,
-            response.getClass().getSimpleName());
+                     response.getClass().getSimpleName());
         ctx.writeAndFlush(response);
         ctx.pipeline().replace(Http1FrontendHandler.this, null,
-            connectionContext.handler(Handler.TLS_FRONTEND));
+                               connectionContext.handler(Handler.TLS_FRONTEND));
     }
 
     private void handleHttpProxyConnection(ChannelHandlerContext ctx,
@@ -122,18 +121,18 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
         Address serverAddr = new Address(fullPath.host, fullPath.port);
         FullHttpRequest newRequest = request.copy();
         connectionContext.connect(serverAddr, ctx).addListener((ChannelFuture future) -> {
-           if (future.isSuccess()) {
-               newRequest.headers().set(request.headers());
-               newRequest.setUri(fullPath.path);
+            if (future.isSuccess()) {
+                newRequest.headers().set(request.headers());
+                newRequest.setUri(fullPath.path);
 
-               LOGGER.info("[Client ({})] => [Server ({})] : {}",
-                       connectionContext.getClientAddr(), connectionContext.getServerAddr(),
-                       newRequest);
-               future.channel().writeAndFlush(newRequest);
-           } else {
-               newRequest.release();
-               ctx.channel().close();
-           }
+                LOGGER.info("[Client ({})] => [Server ({})] : {}",
+                            connectionContext.getClientAddr(), connectionContext.getServerAddr(),
+                            newRequest);
+                future.channel().writeAndFlush(newRequest);
+            } else {
+                newRequest.release();
+                ctx.channel().close();
+            }
         });
     }
 
@@ -161,7 +160,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
 
     private int resolvePort(String scheme, String port) {
         if (Strings.isNullOrEmpty(port)) {
-            return "https".equals(scheme) ? 443 : 80;
+            return "https".equals(scheme)? 443 : 80;
         }
         return Integer.parseInt(port);
     }

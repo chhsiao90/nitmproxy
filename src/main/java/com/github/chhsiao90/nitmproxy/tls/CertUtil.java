@@ -32,12 +32,21 @@ import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
 public class CertUtil {
+
     private static final Provider PROVIDER = new BouncyCastleProvider();
+
+    private CertUtil() {
+    }
 
     public static Certificate newCert(String parentCertFile, String keyFile, String host) {
         try {
             Date before = Date.from(Instant.now());
-            Date after = Date.from(Year.now().plus(3, ChronoUnit.YEARS).atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+            Date after = Date.from(
+                    Year.now()
+                        .plus(3, ChronoUnit.YEARS)
+                        .atDay(1)
+                        .atStartOfDay(ZoneId.systemDefault())
+                        .toInstant());
 
             X509CertificateHolder parent = readPemFromFile(parentCertFile);
             PEMKeyPair pemKeyPair = readPemFromFile(keyFile);
@@ -52,7 +61,8 @@ public class CertUtil {
                     after,
                     new X500Name("CN=" + host),
                     keyPair.getPublic());
-            GeneralNames generalNames = GeneralNames.getInstance(new DERSequence(new GeneralName(GeneralName.dNSName, host)));
+            GeneralNames generalNames = GeneralNames.getInstance(
+                    new DERSequence(new GeneralName(GeneralName.dNSName, host)));
             x509.addExtension(Extension.subjectAlternativeName, true, generalNames);
 
             ContentSigner signer = new JcaContentSignerBuilder("SHA256WithRSAEncryption")

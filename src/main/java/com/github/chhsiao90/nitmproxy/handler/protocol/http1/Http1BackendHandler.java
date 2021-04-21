@@ -50,7 +50,8 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         LOGGER.info("{} : channelInactive", connectionContext);
         delayOutboundHandler.release();
-        connectionContext.clientChannel().pipeline().fireUserEventTriggered(new OutboundChannelClosedEvent(connectionContext, false));
+        connectionContext.clientChannel().pipeline()
+                         .fireUserEventTriggered(new OutboundChannelClosedEvent(connectionContext, false));
     }
 
     @Override
@@ -58,8 +59,8 @@ public class Http1BackendHandler extends SimpleChannelInboundHandler<HttpObject>
         LOGGER.info("{} : handlerAdded", connectionContext);
 
         ctx.pipeline()
-           .addBefore(ctx.name(), null, new HttpClientCodec())
-           .addBefore(ctx.name(), null, delayOutboundHandler);
+            .addBefore(ctx.name(), null, new HttpClientCodec())
+            .addBefore(ctx.name(), null, delayOutboundHandler);
     }
 
     @Override

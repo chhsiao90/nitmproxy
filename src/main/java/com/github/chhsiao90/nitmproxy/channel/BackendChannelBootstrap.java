@@ -9,7 +9,9 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 
 public class BackendChannelBootstrap {
-    public ChannelFuture connect(ChannelHandlerContext fromCtx, NitmProxyMaster master, ConnectionContext connectionContext,
+    public ChannelFuture connect(ChannelHandlerContext fromCtx,
+                                 NitmProxyMaster master,
+                                 ConnectionContext connectionContext,
                                  ChannelHandler handler) {
         return new Bootstrap()
                 .group(fromCtx.channel().eventLoop())

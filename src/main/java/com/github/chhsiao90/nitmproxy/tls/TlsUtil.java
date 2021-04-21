@@ -17,10 +17,11 @@ import io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBehavior;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+
 import javax.net.ssl.SSLException;
 import javax.net.ssl.TrustManagerFactory;
 
-public class TlsUtil {
+public final class TlsUtil {
 
     private static final TrustManagerFactory TRUST_MANAGER_FACTORY;
 
@@ -35,12 +36,15 @@ public class TlsUtil {
         TRUST_MANAGER_FACTORY = trustManagerFactory;
     }
 
+    private TlsUtil() {
+    }
+
     public static SslContext ctxForClient(ConnectionContext context) throws SSLException {
         SslContextBuilder builder = SslContextBuilder
-            .forClient()
-            .protocols(context.config().getTlsProtocols())
-            .sslContextProvider(context.config().getSslProvider())
-            .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()));
+                .forClient()
+                .protocols(context.config().getTlsProtocols())
+                .sslContextProvider(context.config().getSslProvider())
+                .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()));
         if (context.config().getClientKeyManagerFactory() != null) {
             builder.keyManager(context.config().getClientKeyManagerFactory());
         }
@@ -56,26 +60,26 @@ public class TlsUtil {
         String certFile = new File(context.config().getCertFile()).getAbsolutePath();
         String keyFile = new File(context.config().getKeyFile()).getAbsolutePath();
         Certificate certificate = CertUtil.newCert(
-            certFile, keyFile, context.getServerAddr().getHost());
+                certFile, keyFile, context.getServerAddr().getHost());
         return SslContextBuilder
-            .forServer(certificate.getKeyPair().getPrivate(), certificate.getChain())
-            .protocols(context.config().getTlsProtocols())
-            .sslContextProvider(context.config().getSslProvider())
-            .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()))
-            .build();
+                .forServer(certificate.getKeyPair().getPrivate(), certificate.getChain())
+                .protocols(context.config().getTlsProtocols())
+                .sslContextProvider(context.config().getSslProvider())
+                .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()))
+                .build();
     }
 
     private static ApplicationProtocolConfig applicationProtocolConfig(TlsContext tlsContext) {
         return new ApplicationProtocolConfig(
-            Protocol.ALPN,
-            SelectorFailureBehavior.NO_ADVERTISE,
-            SelectedListenerFailureBehavior.ACCEPT,
-            alpnProtocols(tlsContext));
+                Protocol.ALPN,
+                SelectorFailureBehavior.NO_ADVERTISE,
+                SelectedListenerFailureBehavior.ACCEPT,
+                alpnProtocols(tlsContext));
     }
 
     private static String[] alpnProtocols(TlsContext tlsCtx) {
         if (tlsCtx.isNegotiated()) {
-            return new String[]{tlsCtx.protocol()};
+            return new String[] { tlsCtx.protocol() };
         }
         if (tlsCtx.protocolsPromise().isDone()) {
             List<String> protocols = tlsCtx.protocols();
@@ -83,6 +87,6 @@ public class TlsUtil {
                 return protocols.toArray(new String[0]);
             }
         }
-        return new String[]{HTTP_1_1};
+        return new String[] { HTTP_1_1 };
     }
 }

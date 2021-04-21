@@ -56,7 +56,8 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
         LOGGER.info("{} : handlerAdded", connectionContext.toString(true));
 
         Socks5ServerEncoder socks5ServerEncoder = new Socks5ServerEncoder(Socks5AddressEncoder.DEFAULT);
-        SocksPortUnificationServerHandler socksPortUnificationServerHandler = new SocksPortUnificationServerHandler(socks5ServerEncoder);
+        SocksPortUnificationServerHandler socksPortUnificationServerHandler =
+                new SocksPortUnificationServerHandler(socks5ServerEncoder);
         ctx.pipeline().addBefore(ctx.name(), null, socksPortUnificationServerHandler);
     }
 
