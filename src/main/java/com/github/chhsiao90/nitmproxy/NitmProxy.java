@@ -1,9 +1,12 @@
 package com.github.chhsiao90.nitmproxy;
 
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
-
-import java.io.File;
-
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -14,12 +17,7 @@ import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
+import java.io.File;
 
 public class NitmProxy {
     private static final Logger LOGGER = LoggerFactory.getLogger(NitmProxy.class);
@@ -106,18 +104,6 @@ public class NitmProxy {
                       .hasArg()
                       .argName("KEY")
                       .desc("key used by server(*.pem), default: key.pem")
-                      .build());
-        options.addOption(
-                Option.builder()
-                      .longOpt("clientNoHttp2")
-                      .hasArg(false)
-                      .desc("disable http2 for client")
-                      .build());
-        options.addOption(
-                Option.builder()
-                      .longOpt("serverNoHttp2")
-                      .hasArg(false)
-                      .desc("disable http2 for server")
                       .build());
         options.addOption(
                 Option.builder("k")
