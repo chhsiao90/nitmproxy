@@ -1,3 +1,5 @@
+[![Java CI](https://github.com/chhsiao90/nitmproxy/actions/workflows/ci.yml/badge.svg)](https://github.com/chhsiao90/nitmproxy/actions/workflows/ci.yml)
+
 # Netty in the Middle
 
 An experimental proxy server based on [netty](https://github.com/netty/netty).
