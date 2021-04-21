@@ -1,20 +1,8 @@
 package com.github.chhsiao90.nitmproxy.handler.protocol.tls;
 
-import static io.netty.util.ReferenceCountUtil.safeRelease;
-import static java.lang.String.format;
-import static java.util.Collections.singletonList;
-
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
-import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-import com.github.chhsiao90.nitmproxy.enums.Handler;
 import com.github.chhsiao90.nitmproxy.tls.TlsUtil;
-
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
@@ -25,17 +13,21 @@ import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import io.netty.handler.ssl.SslClientHelloHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
+import java.util.List;
+
+import static io.netty.util.ReferenceCountUtil.*;
+import static java.lang.String.*;
 
 public class TlsFrontendHandler extends ChannelDuplexHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(TlsFrontendHandler.class);
 
-    private NitmProxyMaster master;
     private ConnectionContext connectionContext;
 
-    public TlsFrontendHandler(NitmProxyMaster master, ConnectionContext connectionContext) {
-        this.master = master;
+    public TlsFrontendHandler(ConnectionContext connectionContext) {
         this.connectionContext = connectionContext;
     }
 
@@ -76,11 +68,11 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
     }
 
     private void configHttp1(ChannelHandlerContext ctx) {
-        ctx.pipeline().replace(this, null, connectionContext.handler(Handler.HTTP1_FRONTEND));
+        ctx.pipeline().replace(this, null, connectionContext.provider().http1FrontendHandler());
     }
 
     private void configHttp2(ChannelHandlerContext ctx) {
-        ctx.pipeline().replace(this, null, connectionContext.handler(Handler.HTTP2_FRONTEND));
+        ctx.pipeline().replace(this, null, connectionContext.provider().http2FrontendHandler());
     }
 
     private class DetectSslHandler extends SslClientHelloHandler<Boolean> {
@@ -104,9 +96,7 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
                 LOGGER.debug("SSL detection failed with {}", future.cause().getMessage());
                 ctx.close();
             } else if (!future.getNow()) {
-                connectionContext.tlsCtx().setEnabled(false);
-                connectionContext.tlsCtx().protocolsPromise()
-                                 .setSuccess(singletonList(ApplicationProtocolNames.HTTP_1_1));
+                connectionContext.tlsCtx().disableTls();
                 configHttp1(tlsCtx);
                 ctx.pipeline().remove(SniExtractorHandler.class);
                 ctx.pipeline().remove(AlpnNegotiateHandler.class);

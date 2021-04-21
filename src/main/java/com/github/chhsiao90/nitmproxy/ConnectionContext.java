@@ -1,19 +1,18 @@
 package com.github.chhsiao90.nitmproxy;
 
-import static java.lang.String.format;
-
-import com.github.chhsiao90.nitmproxy.enums.Handler;
 import com.github.chhsiao90.nitmproxy.handler.proxy.HttpProxyHandler;
 import com.github.chhsiao90.nitmproxy.handler.proxy.SocksProxyHandler;
-
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 
+import static java.lang.String.*;
+
 public class ConnectionContext {
     private NitmProxyMaster master;
+    private HandlerProvider provider;
 
     private Address clientAddr;
     private Address serverAddr;
@@ -25,6 +24,7 @@ public class ConnectionContext {
 
     public ConnectionContext(NitmProxyMaster master) {
         this.master = master;
+        this.provider = master.provider(this);
         this.tlsCtx = new TlsContext();
     }
 
@@ -63,7 +63,7 @@ public class ConnectionContext {
     public ChannelHandler proxyHandler() {
         switch (master.config().getProxyMode()) {
         case HTTP:
-            return new HttpProxyHandler(master, this);
+            return new HttpProxyHandler(this);
         case SOCKS:
             return new SocksProxyHandler(master, this);
         default:
@@ -71,24 +71,8 @@ public class ConnectionContext {
         }
     }
 
-    public ChannelHandler handler(Handler handler) {
-        HandlerProvider handlerProvider = master.provider();
-        switch (handler) {
-        case HTTP1_BACKEND:
-            return handlerProvider.http1BackendHandler(master, this);
-        case HTTP1_FRONTEND:
-            return handlerProvider.http1FrontendHandler(master, this);
-        case HTTP2_BACKEND:
-            return handlerProvider.http2BackendHandler(master, this);
-        case HTTP2_FRONTEND:
-            return handlerProvider.http2FrontendHandler(master, this);
-        case TLS_BACKEND:
-            return handlerProvider.backendTlsHandler(master, this);
-        case TLS_FRONTEND:
-            return handlerProvider.frontendTlsHandler(master, this);
-        default:
-            throw new IllegalStateException("No handler found with: " + handler);
-        }
+    public HandlerProvider provider() {
+        return provider;
     }
 
     public boolean connected() {
@@ -96,10 +80,6 @@ public class ConnectionContext {
     }
 
     public ChannelFuture connect(Address address, ChannelHandlerContext fromCtx) {
-        if (serverChannel == null) {
-            tlsCtx.protocols(fromCtx.executor().newPromise());
-            tlsCtx.protocol(fromCtx.executor().newPromise());
-        }
         if (serverChannel != null && (!serverAddr.equals(address) || !serverChannel.isActive())) {
             serverChannel.close();
             serverChannel = null;
@@ -108,11 +88,13 @@ public class ConnectionContext {
             return serverChannel.newSucceededFuture();
         }
 
+        tlsCtx.protocols(fromCtx.executor().newPromise());
+        tlsCtx.protocol(fromCtx.executor().newPromise());
         serverAddr = address;
         return master.connect(fromCtx, this, new ChannelInitializer<Channel>() {
             @Override
             protected void initChannel(Channel ch) throws Exception {
-                ch.pipeline().addLast(withServerChannel(ch).handler(Handler.TLS_BACKEND));
+                ch.pipeline().addLast(withServerChannel(ch).provider().tlsBackendHandler());
             }
         });
     }

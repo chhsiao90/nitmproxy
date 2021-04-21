@@ -4,10 +4,7 @@ import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-import com.github.chhsiao90.nitmproxy.event.OutboundChannelClosedEvent;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -18,18 +15,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static java.nio.charset.StandardCharsets.*;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 public class Http1BackendHandlerTest {
-    private NitmProxyMaster master;
-
     private Http1BackendHandler handler;
 
     private EmbeddedChannel inboundChannel;
@@ -38,7 +28,7 @@ public class Http1BackendHandlerTest {
 
     @Before
     public void setUp() throws Exception {
-        master = mock(NitmProxyMaster.class);
+        NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
 
         inboundChannel = new EmbeddedChannel();
@@ -50,7 +40,7 @@ public class Http1BackendHandlerTest {
                 .withClientChannel(outboundChannel)
                 .withServerAddr(new Address("localhost", 8080))
                 .withServerChannel(inboundChannel);
-        handler = new Http1BackendHandler(master, context);
+        handler = new Http1BackendHandler(context);
     }
 
     @After
@@ -60,37 +50,19 @@ public class Http1BackendHandlerTest {
     }
 
     @Test
-    public void shouldFireOutboundChannelClosedEvent() throws InterruptedException {
-        inboundChannel.pipeline().addLast(handler);
-
-        List<Object> events = new ArrayList<>(1);
-        outboundChannel.pipeline().addLast(new ChannelInboundHandlerAdapter() {
-            @Override
-            public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-                events.add(evt);
-            }
-        });
-
-        inboundChannel.close().sync();
-
-        assertFalse(events.isEmpty());
-        assertEquals(1, events.size());
-        assertTrue(events.get(0) instanceof OutboundChannelClosedEvent);
-    }
-
-    @Test
     public void shouldHandlerRequestAndResponse() {
         inboundChannel.pipeline().addLast(handler);
 
         DefaultFullHttpRequest req = new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
-        inboundChannel.write(req);
+        inboundChannel.writeAndFlush(req);
 
         assertEquals(1, inboundChannel.outboundMessages().size());
 
         Object outboundReq = inboundChannel.outboundMessages().poll();
         assertTrue(outboundReq instanceof ByteBuf);
-        assertEquals("GET / HTTP/1.1\r\n\r\n", new String(readBytes((ByteBuf) outboundReq)));
+        assertEquals("GET / HTTP/1.1\r\n\r\n",
+                new String(readBytes((ByteBuf) outboundReq), US_ASCII));
 
         DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
                 HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
@@ -103,25 +75,6 @@ public class Http1BackendHandlerTest {
     }
 
     @Test
-    public void shouldPendingRequests() {
-        inboundChannel.pipeline().addLast(handler);
-
-        DefaultFullHttpRequest req = new DefaultFullHttpRequest(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
-        // First request
-        inboundChannel.write(req.retain());
-
-        assertEquals(1, inboundChannel.outboundMessages().size());
-        assertTrue(inboundChannel.outboundMessages().poll() instanceof ByteBuf);
-
-        // Second request
-        inboundChannel.write(req);
-
-        // Should pending second request
-        assertTrue(inboundChannel.outboundMessages().isEmpty());
-    }
-
-    @Test
     public void shouldHandleRequestsAndResponses() {
         inboundChannel.pipeline().addLast(handler);
 
@@ -129,7 +82,7 @@ public class Http1BackendHandlerTest {
                 HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
 
         // First request
-        inboundChannel.write(req.retain());
+        inboundChannel.writeAndFlush(req.retain());
 
         assertEquals(1, inboundChannel.outboundMessages().size());
         assertTrue(inboundChannel.outboundMessages().poll() instanceof ByteBuf);
@@ -143,7 +96,7 @@ public class Http1BackendHandlerTest {
         assertEquals(resp, outboundChannel.outboundMessages().poll());
 
         // Second request
-        inboundChannel.write(req);
+        inboundChannel.writeAndFlush(req);
 
         assertEquals(1, inboundChannel.outboundMessages().size());
         assertTrue(inboundChannel.outboundMessages().poll() instanceof ByteBuf);
@@ -155,36 +108,6 @@ public class Http1BackendHandlerTest {
         assertEquals(resp, outboundChannel.outboundMessages().poll());
 
         resp.release();
-    }
-
-    @Test
-    public void shouldClearPendingRequests() {
-        inboundChannel.pipeline().addLast(handler);
-
-        DefaultFullHttpRequest req = new DefaultFullHttpRequest(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
-        // First request
-        inboundChannel.write(req.retain());
-
-        assertEquals(1, req.refCnt());
-        assertEquals(1, inboundChannel.outboundMessages().size());
-        assertTrue(inboundChannel.outboundMessages().poll() instanceof ByteBuf);
-
-        // Second request
-        inboundChannel.write(req);
-
-        assertEquals(1, req.refCnt());
-        assertTrue(inboundChannel.outboundMessages().isEmpty());
-
-        inboundChannel.close();
-
-        assertEquals(0, req.refCnt());
-    }
-
-    private ConnectionContext connectionInfo() {
-        return new ConnectionContext(master)
-                .withClientAddr(new Address("localhost", 8080))
-                .withServerAddr(new Address("localhost", 8080));
     }
 
     private static byte[] readBytes(ByteBuf byteBuf) {

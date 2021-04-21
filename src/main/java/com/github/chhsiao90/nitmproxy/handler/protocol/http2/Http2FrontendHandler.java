@@ -1,13 +1,6 @@
 package com.github.chhsiao90.nitmproxy.handler.protocol.http2;
 
-import static com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper.frameWrapper;
-import static io.netty.handler.logging.LogLevel.DEBUG;
-
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -28,6 +21,11 @@ import io.netty.handler.codec.http2.Http2FrameListener;
 import io.netty.handler.codec.http2.Http2FrameLogger;
 import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2Settings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import static com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper.*;
+import static io.netty.handler.logging.LogLevel.*;
 
 public class Http2FrontendHandler
         extends ChannelOutboundHandlerAdapter
@@ -55,7 +53,8 @@ public class Http2FrontendHandler
 
         ctx.pipeline()
             .addBefore(ctx.name(), null, http2ConnectionHandler)
-            .addAfter(ctx.name(), null, new ToUpstreamHandler());
+            .addLast(connectionContext.provider().http2EventHandler())
+            .addLast(new ToUpstreamHandler());
     }
 
     @Override

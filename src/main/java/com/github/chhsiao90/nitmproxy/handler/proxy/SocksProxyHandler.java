@@ -3,14 +3,6 @@ package com.github.chhsiao90.nitmproxy.handler.proxy;
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-import com.github.chhsiao90.nitmproxy.enums.Handler;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -34,18 +26,21 @@ import io.netty.handler.codec.socksx.v5.Socks5InitialRequest;
 import io.netty.handler.codec.socksx.v5.Socks5PasswordAuthRequest;
 import io.netty.handler.codec.socksx.v5.Socks5PasswordAuthStatus;
 import io.netty.handler.codec.socksx.v5.Socks5ServerEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage> {
     private static final Logger LOGGER = LoggerFactory.getLogger(SocksProxyHandler.class);
 
-    private NitmProxyMaster master;
     private ConnectionContext connectionContext;
 
     private List<ChannelHandler> handlers;
 
     public SocksProxyHandler(NitmProxyMaster master,
                              ConnectionContext connectionContext) {
-        this.master = master;
         this.connectionContext = connectionContext;
 
         handlers = new ArrayList<>();
@@ -53,7 +48,7 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerAdded", connectionContext.toString(true));
+        LOGGER.debug("{} : handlerAdded", connectionContext.toString(true));
 
         Socks5ServerEncoder socks5ServerEncoder = new Socks5ServerEncoder(Socks5AddressEncoder.DEFAULT);
         SocksPortUnificationServerHandler socksPortUnificationServerHandler =
@@ -63,7 +58,7 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerRemoved", connectionContext.toString(true));
+        LOGGER.debug("{} : handlerRemoved", connectionContext.toString(true));
 
         handlers.forEach(ctx.pipeline()::remove);
         handlers.clear();
@@ -152,6 +147,6 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
 
     private void onServerConnected(ChannelHandlerContext ctx) {
         ctx.pipeline().replace(SocksProxyHandler.this, null,
-                connectionContext.handler(Handler.TLS_FRONTEND));
+                connectionContext.provider().tlsFrontendHandler());
     }
 }

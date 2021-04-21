@@ -1,27 +1,11 @@
 package com.github.chhsiao90.nitmproxy.handler.protocol.http1;
 
-import static com.github.chhsiao90.nitmproxy.HttpObjectUtil.requestBytes;
-import static io.netty.util.ReferenceCountUtil.release;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import com.github.chhsiao90.nitmproxy.HttpObjectUtil;
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.HandlerProvider;
+import com.github.chhsiao90.nitmproxy.HttpObjectUtil;
 import com.github.chhsiao90.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerAdapter;
@@ -32,10 +16,16 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpVersion;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import static io.netty.util.ReferenceCountUtil.*;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 public class Http1FrontendHandlerTest {
     private NitmProxyMaster master;
-    private HandlerProvider provider;
 
     private EmbeddedChannel inboundChannel;
 
@@ -44,11 +34,12 @@ public class Http1FrontendHandlerTest {
     @Before
     public void setUp() throws Exception {
         master = mock(NitmProxyMaster.class);
-        provider = mock(HandlerProvider.class);
+        HandlerProvider provider = mock(HandlerProvider.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
-        when(master.provider()).thenReturn(provider);
-        when(provider.http1BackendHandler(any(), any())).thenReturn(new ChannelHandlerAdapter() {});
-        when(provider.frontendTlsHandler(any(), any())).thenReturn(new ChannelHandlerAdapter() {});
+        when(master.provider(any())).thenReturn(provider);
+        when(provider.http1EventHandler()).thenReturn(new ChannelHandlerAdapter() {});
+        when(provider.http1BackendHandler()).thenReturn(new ChannelHandlerAdapter() {});
+        when(provider.tlsFrontendHandler()).thenReturn(new ChannelHandlerAdapter() {});
 
         inboundChannel = new EmbeddedChannel();
     }

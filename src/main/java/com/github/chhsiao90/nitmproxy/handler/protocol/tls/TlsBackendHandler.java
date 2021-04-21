@@ -1,19 +1,8 @@
 package com.github.chhsiao90.nitmproxy.handler.protocol.tls;
 
-import static java.lang.String.format;
-
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-import com.github.chhsiao90.nitmproxy.enums.Handler;
 import com.github.chhsiao90.nitmproxy.tls.TlsUtil;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -22,8 +11,15 @@ import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.ReferenceCountUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import static java.lang.String.*;
 
 public class TlsBackendHandler extends ChannelDuplexHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(TlsBackendHandler.class);
@@ -109,11 +105,11 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
     }
 
     private void configHttp1(ChannelHandlerContext ctx) {
-        ctx.pipeline().replace(this, null, connectionContext.handler(Handler.HTTP1_BACKEND));
+        ctx.pipeline().replace(this, null, connectionContext.provider().http1BackendHandler());
     }
 
     private void configHttp2(ChannelHandlerContext ctx) {
-        ctx.pipeline().replace(this, null, connectionContext.handler(Handler.HTTP2_BACKEND));
+        ctx.pipeline().replace(this, null, connectionContext.provider().http2BackendHandler());
     }
 
     /**

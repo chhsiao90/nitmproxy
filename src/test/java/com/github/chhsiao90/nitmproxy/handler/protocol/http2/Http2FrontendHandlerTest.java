@@ -2,6 +2,7 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.http2;
 
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
+import com.github.chhsiao90.nitmproxy.HandlerProvider;
 import com.github.chhsiao90.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert;
@@ -9,6 +10,7 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
@@ -65,6 +67,10 @@ public class Http2FrontendHandlerTest {
     public void setUp() throws Exception {
         NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
+
+        HandlerProvider provider = mock(HandlerProvider.class);
+        when(master.provider(any())).thenReturn(provider);
+        when(provider.http2EventHandler()).thenReturn(new ChannelHandlerAdapter() {});
 
         targetChannel = new EmbeddedChannel();
         connectionContext = new ConnectionContext(master)

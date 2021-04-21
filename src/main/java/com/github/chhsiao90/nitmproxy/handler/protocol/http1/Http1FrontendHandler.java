@@ -3,17 +3,9 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.http1;
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-import com.github.chhsiao90.nitmproxy.enums.Handler;
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
 import com.github.chhsiao90.nitmproxy.event.OutboundChannelClosedEvent;
-import com.google.common.base.Strings;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.github.chhsiao90.nitmproxy.http.HttpUrl;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -26,10 +18,13 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.util.ReferenceCountUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
-    private static final Pattern PATH_PATTERN = Pattern.compile("(https?)://([a-zA-Z0-9\\.\\-]+)(:(\\d+))?(/.*)");
-    private static final Pattern TUNNEL_ADDR_PATTERN = Pattern.compile("^([a-zA-Z0-9\\.\\-_]+):(\\d+)");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Http1FrontendHandler.class);
 
@@ -37,8 +32,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
     private ConnectionContext connectionContext;
     private boolean tunneled;
 
-    private ChannelHandler httpServerCodec;
-    private ChannelHandler httpObjectAggregator;
+    private List<ChannelHandler> addedHandlers = new ArrayList<>(3);
 
     public Http1FrontendHandler(NitmProxyMaster master, ConnectionContext connectionContext) {
         super();
@@ -49,24 +43,27 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
 
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerAdded", connectionContext);
+        LOGGER.debug("{} : handlerAdded", connectionContext);
 
-        httpServerCodec = new HttpServerCodec();
-        httpObjectAggregator = new HttpObjectAggregator(master.config().getMaxContentLength());
-        ctx.pipeline()
-            .addBefore(ctx.name(), null, httpServerCodec)
-            .addBefore(ctx.name(), null, httpObjectAggregator);
+        addedHandlers.add(new HttpServerCodec());
+        addedHandlers.add(new HttpObjectAggregator(master.config().getMaxContentLength()));
+        addedHandlers.add(connectionContext.provider().http1EventHandler());
+
+        addedHandlers.forEach(handler -> ctx.pipeline().addBefore(ctx.name(), null, handler));
     }
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        LOGGER.info("{} : handlerRemoved", connectionContext);
+        LOGGER.debug("{} : handlerRemoved", connectionContext);
+        addedHandlers.forEach(handler -> ctx.pipeline().remove(handler));
+    }
 
-        ctx.pipeline().remove(httpServerCodec).remove(httpObjectAggregator);
-
-        if (tunneled) {
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        if (connectionContext.connected()) {
             connectionContext.serverChannel().close();
         }
+        ctx.fireChannelInactive();
     }
 
     @Override
@@ -79,9 +76,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                 handleHttpProxyConnection(ctx, request);
             }
         } else {
-            LOGGER.info("[Client ({})] => [Server ({})] : {}",
-                        connectionContext.getClientAddr(), connectionContext.getServerAddr(),
-                        request);
+            LOGGER.debug("{} : {}", connectionContext, request);
             connectionContext.serverChannel().writeAndFlush(ReferenceCountUtil.retain(request));
         }
     }
@@ -99,7 +94,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
 
     private void handleTunnelProxyConnection(ChannelHandlerContext ctx,
                                              FullHttpRequest request) throws Exception {
-        Address address = resolveTunnelAddr(request.uri());
+        Address address = Address.resolve(request.uri());
         connectionContext.connect(address, ctx).addListener((future) -> {
             if (!future.isSuccess()) {
                 ctx.close();
@@ -112,90 +107,28 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                      response.getClass().getSimpleName());
         ctx.writeAndFlush(response);
         ctx.pipeline().replace(Http1FrontendHandler.this, null,
-                               connectionContext.handler(Handler.TLS_FRONTEND));
+                connectionContext.provider().tlsFrontendHandler());
     }
 
     private void handleHttpProxyConnection(ChannelHandlerContext ctx,
                                            FullHttpRequest request) throws Exception {
-        FullPath fullPath = resolveHttpProxyPath(request.uri());
-        Address serverAddr = new Address(fullPath.host, fullPath.port);
+        HttpUrl httpUrl = HttpUrl.resolve(request.uri());
+        Address address = new Address(httpUrl.getHost(), httpUrl.getPort());
         FullHttpRequest newRequest = request.copy();
-        connectionContext.connect(serverAddr, ctx).addListener((ChannelFuture future) -> {
+        connectionContext.connect(address, ctx).addListener((ChannelFuture future) -> {
             if (future.isSuccess()) {
                 newRequest.headers().set(request.headers());
-                newRequest.setUri(fullPath.path);
+                newRequest.setUri(httpUrl.getPath());
 
-                LOGGER.info("[Client ({})] => [Server ({})] : {}",
-                            connectionContext.getClientAddr(), connectionContext.getServerAddr(),
-                            newRequest);
+                LOGGER.debug("{} : {}", connectionContext, newRequest);
                 future.channel().writeAndFlush(newRequest);
             } else {
                 newRequest.release();
                 ctx.channel().close();
             }
         });
-    }
-
-    private FullPath resolveHttpProxyPath(String fullPath) {
-        Matcher matcher = PATH_PATTERN.matcher(fullPath);
-        if (matcher.find()) {
-            String scheme = matcher.group(1);
-            String host = matcher.group(2);
-            int port = resolvePort(scheme, matcher.group(4));
-            String path = matcher.group(5);
-            return new FullPath(scheme, host, port, path);
-        } else {
-            throw new IllegalStateException("Illegal http proxy path: " + fullPath);
-        }
-    }
-
-    private Address resolveTunnelAddr(String addr) {
-        Matcher matcher = TUNNEL_ADDR_PATTERN.matcher(addr);
-        if (matcher.find()) {
-            return new Address(matcher.group(1), Integer.parseInt(matcher.group(2)));
-        } else {
-            throw new IllegalStateException("Illegal tunnel addr: " + addr);
-        }
-    }
-
-    private int resolvePort(String scheme, String port) {
-        if (Strings.isNullOrEmpty(port)) {
-            return "https".equals(scheme)? 443 : 80;
-        }
-        return Integer.parseInt(port);
-    }
-
-    private ChannelFuture createOutboundChannel(ChannelHandlerContext ctx, Address serverAddr) {
-        ChannelFuture future = connectionContext.connect(serverAddr, ctx);
-        future.addListener((f) -> {
-            if (!f.isSuccess()) {
-                ctx.channel().close();
-            }
-        });
-        return future;
-    }
-
-    private static class FullPath {
-        private String scheme;
-        private String host;
-        private int port;
-        private String path;
-
-        private FullPath(String scheme, String host, int port, String path) {
-            this.scheme = scheme;
-            this.host = host;
-            this.port = port;
-            this.path = path;
-        }
-
-        @Override
-        public String toString() {
-            return "FullPath{" +
-                   "scheme='" + scheme + '\'' +
-                   ", host='" + host + '\'' +
-                   ", port=" + port +
-                   ", path='" + path + '\'' +
-                   '}';
+        if (!connectionContext.tlsCtx().isNegotiated()) {
+            connectionContext.tlsCtx().disableTls();
         }
     }
 }

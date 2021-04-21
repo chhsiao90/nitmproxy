@@ -1,10 +1,12 @@
 package com.github.chhsiao90.nitmproxy;
 
 import com.github.chhsiao90.nitmproxy.exception.TlsException;
+import io.netty.handler.ssl.ApplicationProtocolNames;
+import io.netty.util.concurrent.Promise;
 
 import java.util.List;
 
-import io.netty.util.concurrent.Promise;
+import static java.util.Collections.*;
 
 public class TlsContext {
 
@@ -62,7 +64,9 @@ public class TlsContext {
         return enabled;
     }
 
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
+    public void disableTls() {
+        enabled = false;
+        protocols.setSuccess(singletonList(ApplicationProtocolNames.HTTP_1_1));
+        protocol.setSuccess(ApplicationProtocolNames.HTTP_1_1);
     }
 }
