@@ -5,7 +5,7 @@ import io.netty.handler.codec.http.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HttpEventLogger implements HttpEventListener {
+public class HttpEventLogger implements HttpListener {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HttpEventLogger.class);
 

@@ -1,16 +1,17 @@
 package com.github.chhsiao90.nitmproxy;
 
-import static java.lang.String.format;
-import static java.lang.System.lineSeparator;
-import static java.util.Arrays.asList;
-
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
+import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.google.common.base.Joiner;
 
+import javax.net.ssl.KeyManagerFactory;
 import java.security.Provider;
+import java.util.ArrayList;
 import java.util.List;
 
-import javax.net.ssl.KeyManagerFactory;
+import static java.lang.String.*;
+import static java.lang.System.*;
+import static java.util.Arrays.*;
 
 public class NitmProxyConfig {
     private ProxyMode proxyMode;
@@ -28,6 +29,8 @@ public class NitmProxyConfig {
 
     private int maxContentLength;
 
+    private List<HttpListener> httpListeners;
+
     // Default values
     public NitmProxyConfig() {
         proxyMode = ProxyMode.HTTP;
@@ -41,6 +44,8 @@ public class NitmProxyConfig {
         tlsProtocols = asList("TLSv1.3", "TLSv1.2");
 
         maxContentLength = 1024 * 1024;
+
+        httpListeners = new ArrayList<>();
     }
 
     public ProxyMode getProxyMode() {
@@ -121,6 +126,14 @@ public class NitmProxyConfig {
 
     public void setMaxContentLength(int maxContentLength) {
         this.maxContentLength = maxContentLength;
+    }
+
+    public List<HttpListener> getHttpListeners() {
+        return httpListeners;
+    }
+
+    public void setHttpListeners(List<HttpListener> httpListeners) {
+        this.httpListeners = httpListeners;
     }
 
     @Override

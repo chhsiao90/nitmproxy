@@ -1,7 +1,7 @@
 package com.github.chhsiao90.nitmproxy;
 
 import com.github.chhsiao90.nitmproxy.channel.BackendChannelBootstrap;
-import com.github.chhsiao90.nitmproxy.listener.HttpEventListener;
+import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerManager;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
@@ -27,7 +27,7 @@ public class NitmProxyMaster {
         return new HandlerProvider(this, context);
     }
 
-    public HttpEventListener httpEventListener() {
+    public HttpListener httpEventListener() {
         return nitmProxyListenerManager;
     }
 

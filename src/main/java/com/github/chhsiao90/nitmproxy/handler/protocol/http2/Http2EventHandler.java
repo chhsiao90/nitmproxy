@@ -4,7 +4,7 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.http.HttpUtil;
-import com.github.chhsiao90.nitmproxy.listener.HttpEventListener;
+import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -22,7 +22,7 @@ import static java.lang.System.*;
 
 public class Http2EventHandler extends ChannelDuplexHandler {
 
-    private HttpEventListener listener;
+    private HttpListener listener;
     private ConnectionContext connectionContext;
 
     private Map<Integer, FrameCollector> streams = new ConcurrentHashMap<>();
@@ -45,6 +45,7 @@ public class Http2EventHandler extends ChannelDuplexHandler {
             throws Exception {
         if (msg instanceof Http2FrameWrapper) {
             Http2FrameWrapper<?> frameWrapper = (Http2FrameWrapper<?>) msg;
+            listener.onHttp2ResponseFrame(frameWrapper);
             FrameCollector frameCollector = streams.computeIfAbsent(
                     frameWrapper.streamId(), ignored -> new FrameCollector());
             if (frameCollector.onResponseFrame(frameWrapper.frame())) {
@@ -65,6 +66,7 @@ public class Http2EventHandler extends ChannelDuplexHandler {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof Http2FrameWrapper) {
             Http2FrameWrapper<?> frameWrapper = (Http2FrameWrapper<?>) msg;
+            listener.onHttp2RequestFrame(frameWrapper);
             FrameCollector frameCollector = streams.computeIfAbsent(
                     frameWrapper.streamId(), ignored -> new FrameCollector());
             frameCollector.onRequestFrame(frameWrapper.frame());

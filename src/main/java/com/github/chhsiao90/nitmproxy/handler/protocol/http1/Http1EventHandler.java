@@ -3,7 +3,7 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.http1;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
-import com.github.chhsiao90.nitmproxy.listener.HttpEventListener;
+import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -22,7 +22,7 @@ import static java.lang.System.*;
 
 public class Http1EventHandler extends ChannelDuplexHandler {
 
-    private HttpEventListener listener;
+    private HttpListener listener;
     private ConnectionContext connectionContext;
 
     private long requestTime;
@@ -49,11 +49,13 @@ public class Http1EventHandler extends ChannelDuplexHandler {
         if (msg instanceof HttpResponse) {
             checkState(request != null, "request is null");
             checkState(response == null, "response is not null");
+            listener.onHttp1Response((HttpResponse) msg);
             responseBytes = new AtomicLong();
             response = retain((HttpResponse) msg);
         }
         if (msg instanceof HttpContent) {
             HttpContent httpContent = (HttpContent) msg;
+            listener.onHttp1ResponseData((HttpContent) msg);
             responseBytes.addAndGet(httpContent.content().readableBytes());
         }
         if (msg instanceof LastHttpContent) {
@@ -92,6 +94,8 @@ public class Http1EventHandler extends ChannelDuplexHandler {
         if (msg instanceof FullHttpRequest) {
             checkState(request == null, "request is not null");
             checkState(response == null, "response is not null");
+            listener.onHttp1Request((FullHttpRequest) msg);
+            listener.onHttp1RequestData((FullHttpRequest) msg);
             request = (FullHttpRequest) retain(msg);
             requestTime = currentTimeMillis();
         }
