@@ -11,44 +11,45 @@ import java.util.List;
 
 public class NitmProxyListenerManager implements HttpListener {
 
-    private List<HttpListener> httpEventListeners = new ArrayList<>();
+    private List<HttpListener> httpListeners = new ArrayList<>();
 
-    public NitmProxyListenerManager() {
-        httpEventListeners.add(new HttpEventLogger());
+    public NitmProxyListenerManager(List<HttpListener> listeners) {
+        httpListeners.add(new HttpEventLogger());
+        httpListeners.addAll(listeners);
     }
 
     @Override
     public void onHttpEvent(HttpEvent event) {
-        httpEventListeners.forEach(listener -> listener.onHttpEvent(event));
+        httpListeners.forEach(listener -> listener.onHttpEvent(event));
     }
 
     @Override
     public void onHttp1Request(HttpRequest request) {
-        httpEventListeners.forEach(listener -> listener.onHttp1Request(request));
+        httpListeners.forEach(listener -> listener.onHttp1Request(request));
     }
 
     @Override
     public void onHttp1RequestData(HttpContent data) {
-        httpEventListeners.forEach(listener -> listener.onHttp1RequestData(data));
+        httpListeners.forEach(listener -> listener.onHttp1RequestData(data));
     }
 
     @Override
     public void onHttp1Response(HttpResponse response) {
-        httpEventListeners.forEach(listener -> listener.onHttp1Response(response));
+        httpListeners.forEach(listener -> listener.onHttp1Response(response));
     }
 
     @Override
     public void onHttp1ResponseData(HttpContent data) {
-        httpEventListeners.forEach(listener -> listener.onHttp1ResponseData(data));
+        httpListeners.forEach(listener -> listener.onHttp1ResponseData(data));
     }
 
     @Override
     public void onHttp2RequestFrame(Http2FrameWrapper<?> frame) {
-        httpEventListeners.forEach(listener -> listener.onHttp2RequestFrame(frame));
+        httpListeners.forEach(listener -> listener.onHttp2RequestFrame(frame));
     }
 
     @Override
     public void onHttp2ResponseFrame(Http2FrameWrapper<?> frame) {
-        httpEventListeners.forEach(listener -> listener.onHttp2ResponseFrame(frame));
+        httpListeners.forEach(listener -> listener.onHttp2ResponseFrame(frame));
     }
 }

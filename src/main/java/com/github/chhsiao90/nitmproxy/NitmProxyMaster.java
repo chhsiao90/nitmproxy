@@ -16,7 +16,7 @@ public class NitmProxyMaster {
                            BackendChannelBootstrap backendChannelBootstrap) {
         this.config = config;
         this.backendChannelBootstrap = backendChannelBootstrap;
-        this.nitmProxyListenerManager = new NitmProxyListenerManager();
+        this.nitmProxyListenerManager = new NitmProxyListenerManager(config.getHttpListeners());
     }
 
     public NitmProxyConfig config() {
