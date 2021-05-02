@@ -48,9 +48,12 @@ public final class TlsUtil {
         if (context.config().getClientKeyManagerFactory() != null) {
             builder.keyManager(context.config().getClientKeyManagerFactory());
         }
+        if (context.config().getTrustManager() != null) {
+            builder.trustManager(context.config().getTrustManager());
+        }
         if (context.config().isInsecure()) {
             builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
-        } else if (TRUST_MANAGER_FACTORY != null) {
+        } else if (TRUST_MANAGER_FACTORY != null && context.config().getTrustManager() == null) {
             builder.trustManager(TRUST_MANAGER_FACTORY);
         }
         return builder.build();
