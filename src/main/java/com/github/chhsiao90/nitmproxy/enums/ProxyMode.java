@@ -2,7 +2,8 @@ package com.github.chhsiao90.nitmproxy.enums;
 
 public enum ProxyMode {
     SOCKS,
-    HTTP;
+    HTTP,
+    TRANSPARENT;
 
     public static ProxyMode of(String name) {
         try {

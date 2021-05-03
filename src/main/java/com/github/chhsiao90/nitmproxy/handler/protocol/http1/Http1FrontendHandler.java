@@ -75,6 +75,8 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
             } else {
                 handleHttpProxyConnection(ctx, request);
             }
+        } else if (master.config().getProxyMode() == ProxyMode.TRANSPARENT) {
+            handleHttpProxyConnection(ctx, request);
         } else {
             LOGGER.debug("{} : {}", connectionContext, request);
             connectionContext.serverChannel().writeAndFlush(ReferenceCountUtil.retain(request));
@@ -104,7 +106,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
         FullHttpResponse response =
                 new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
         LOGGER.debug("{} : {}", connectionContext,
-                     response.getClass().getSimpleName());
+                response.getClass().getSimpleName());
         ctx.writeAndFlush(response);
         ctx.pipeline().replace(Http1FrontendHandler.this, null,
                 connectionContext.provider().tlsFrontendHandler());
