@@ -5,6 +5,8 @@ import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.google.common.base.Joiner;
 
 import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManager;
+
 import java.security.Provider;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +32,7 @@ public class NitmProxyConfig {
     private int maxContentLength;
 
     private List<HttpListener> httpListeners;
+    private TrustManager trustManager;
 
     // Default values
     public NitmProxyConfig() {
@@ -118,6 +121,14 @@ public class NitmProxyConfig {
 
     public void setClientKeyManagerFactory(KeyManagerFactory clientKeyManagerFactory) {
         this.clientKeyManagerFactory = clientKeyManagerFactory;
+    }
+
+    public TrustManager getTrustManager() {
+        return trustManager;
+    }
+
+    public void setTrustManager(TrustManager trustManager) {
+        this.trustManager = trustManager;
     }
 
     public int getMaxContentLength() {
