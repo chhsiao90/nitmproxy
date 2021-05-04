@@ -1,1 +1,1 @@
-mvn compile -Dcheckstyle.skip exec:exec -Dmain.args="%*" %JAVA_OPTS%
+mvn compile exec:java@inprocess %JAVA_OPTS% -Dmain.args="%*"

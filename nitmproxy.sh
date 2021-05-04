@@ -1,1 +1,1 @@
-mvn exec:exec -Dmain.args="$*" $JAVA_OPTS
+mvn compile exec:java@inprocess -Dmain.args="$*" $JAVA_OPTS
