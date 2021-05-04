@@ -68,35 +68,35 @@ public class SocksProxyHandler extends SimpleChannelInboundHandler<SocksMessage>
     protected void channelRead0(ChannelHandlerContext ctx, SocksMessage socksMessage)
             throws Exception {
         switch (socksMessage.version()) {
-        case SOCKS4a:
-            Socks4CommandRequest socksV4CmdRequest = (Socks4CommandRequest) socksMessage;
-            if (socksV4CmdRequest.type() == Socks4CommandType.CONNECT) {
-                onSocksSuccess(ctx, socksV4CmdRequest);
-            } else {
-                ctx.close();
-            }
-            break;
-        case SOCKS5:
-            if (socksMessage instanceof Socks5InitialRequest) {
-                ctx.pipeline().addFirst(addChannelHandler(new Socks5CommandRequestDecoder()));
-                ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.NO_AUTH));
-            } else if (socksMessage instanceof Socks5PasswordAuthRequest) {
-                ctx.pipeline().addFirst(addChannelHandler(new Socks5CommandRequestDecoder()));
-                ctx.writeAndFlush(new DefaultSocks5PasswordAuthResponse(Socks5PasswordAuthStatus.SUCCESS));
-            } else if (socksMessage instanceof Socks5CommandRequest) {
-                Socks5CommandRequest socks5CmdRequest = (Socks5CommandRequest) socksMessage;
-                if (socks5CmdRequest.type() == Socks5CommandType.CONNECT) {
-                    onSocksSuccess(ctx, socks5CmdRequest);
+            case SOCKS4a:
+                Socks4CommandRequest socksV4CmdRequest = (Socks4CommandRequest) socksMessage;
+                if (socksV4CmdRequest.type() == Socks4CommandType.CONNECT) {
+                    onSocksSuccess(ctx, socksV4CmdRequest);
                 } else {
                     ctx.close();
                 }
-            } else {
+                break;
+            case SOCKS5:
+                if (socksMessage instanceof Socks5InitialRequest) {
+                    ctx.pipeline().addFirst(addChannelHandler(new Socks5CommandRequestDecoder()));
+                    ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.NO_AUTH));
+                } else if (socksMessage instanceof Socks5PasswordAuthRequest) {
+                    ctx.pipeline().addFirst(addChannelHandler(new Socks5CommandRequestDecoder()));
+                    ctx.writeAndFlush(new DefaultSocks5PasswordAuthResponse(Socks5PasswordAuthStatus.SUCCESS));
+                } else if (socksMessage instanceof Socks5CommandRequest) {
+                    Socks5CommandRequest socks5CmdRequest = (Socks5CommandRequest) socksMessage;
+                    if (socks5CmdRequest.type() == Socks5CommandType.CONNECT) {
+                        onSocksSuccess(ctx, socks5CmdRequest);
+                    } else {
+                        ctx.close();
+                    }
+                } else {
+                    ctx.close();
+                }
+                break;
+            case UNKNOWN:
                 ctx.close();
-            }
-            break;
-        case UNKNOWN:
-            ctx.close();
-            break;
+                break;
         }
     }
 
