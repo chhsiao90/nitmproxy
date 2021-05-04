@@ -43,7 +43,7 @@ public class CertUtil {
             Date before = Date.from(Instant.now());
             Date after = Date.from(
                     Year.now()
-                        .plus(3, ChronoUnit.YEARS)
+                        .plus(1, ChronoUnit.YEARS)
                         .atDay(1)
                         .atStartOfDay(ZoneId.systemDefault())
                         .toInstant());
