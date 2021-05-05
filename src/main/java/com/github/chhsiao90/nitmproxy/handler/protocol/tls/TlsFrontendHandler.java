@@ -13,6 +13,7 @@ import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import io.netty.handler.ssl.SslClientHelloHandler;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.util.NetUtil;
 import io.netty.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,9 +122,12 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
                 //address is already set in the Http1Connection handler
                 if (connectionContext.config().getProxyMode() == ProxyMode.TRANSPARENT) {
                     InetSocketAddress dest = (InetSocketAddress) ctx.channel().remoteAddress();
+                    String ip = NetUtil.toAddressString(dest.getAddress());
+                    int port = dest.getPort();
+
                     LOGGER.debug("Transparent Remote Address {}->{}:{}", hostname,
-                            dest.getAddress().toString(), dest.getPort());
-                    address = new Address(dest.toString(), dest.getPort());
+                            ip, port);
+                    address = new Address(ip, port);
                 } else {
                     address = new Address(hostname, connectionContext.getServerAddr().getPort());
                 }
