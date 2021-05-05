@@ -2,6 +2,7 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.tls;
 
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
+import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
 import com.github.chhsiao90.nitmproxy.tls.TlsUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -17,6 +18,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.netty.util.ReferenceCountUtil.*;
@@ -151,7 +154,18 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
         protected Future<Object> lookup(ChannelHandlerContext ctx, String hostname) {
             LOGGER.debug("Client SNI lookup with {}", hostname);
             if (hostname != null) {
-                connectionContext.withServerAddr(new Address(hostname, connectionContext.getServerAddr().getPort()));
+                Address address = null;
+
+                //set the remote address based on the proxy type. If not transparent, server
+                //address is already set in the Http1Connection handler
+                if(connectionContext.config().getProxyMode() == ProxyMode.TRANSPARENT) {
+                    InetSocketAddress dest = (InetSocketAddress) ctx.channel().remoteAddress();
+                    LOGGER.debug("Transparent Remote Address {}->{}:{}", hostname, dest.getAddress().toString(), dest.getPort());
+                    address = new Address(dest.toString(), dest.getPort());
+                } else {
+                    address = new Address(hostname, connectionContext.getServerAddr().getPort());
+                }
+                connectionContext.withServerAddr(address);
             }
             return ctx.executor().newSucceededFuture(null);
         }
