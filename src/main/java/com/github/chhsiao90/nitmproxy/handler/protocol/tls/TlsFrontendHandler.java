@@ -109,6 +109,34 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
             }
         }
     }
+    private class SniExtractorHandler extends AbstractSniHandler<Object> {
+
+        @Override
+        protected Future<Object> lookup(ChannelHandlerContext ctx, String hostname) {
+            LOGGER.debug("Client SNI lookup with {}", hostname);
+            if (hostname != null) {
+                Address address = null;
+
+                //set the remote address based on the proxy type. If not transparent, server
+                //address is already set in the Http1Connection handler
+                if (connectionContext.config().getProxyMode() == ProxyMode.TRANSPARENT) {
+                    InetSocketAddress dest = (InetSocketAddress) ctx.channel().remoteAddress();
+                    LOGGER.debug("Transparent Remote Address {}->{}:{}", hostname,
+                            dest.getAddress().toString(), dest.getPort());
+                    address = new Address(dest.toString(), dest.getPort());
+                } else {
+                    address = new Address(hostname, connectionContext.getServerAddr().getPort());
+                }
+                connectionContext.withServerAddr(address);
+            }
+            return ctx.executor().newSucceededFuture(null);
+        }
+
+        @Override
+        protected void onLookupComplete(ChannelHandlerContext ctx, String hostname, Future<Object> future) {
+            ctx.pipeline().remove(this);
+        }
+    }
 
     private class AlpnNegotiateHandler extends AbstractAlpnHandler<String> {
 
@@ -145,34 +173,6 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
             LOGGER.debug("Client ALPN lookup with {}", protocols);
             connectionContext.tlsCtx().protocolsPromise().setSuccess(protocols);
             return connectionContext.tlsCtx().protocolPromise();
-        }
-    }
-
-    private class SniExtractorHandler extends AbstractSniHandler<Object> {
-
-        @Override
-        protected Future<Object> lookup(ChannelHandlerContext ctx, String hostname) {
-            LOGGER.debug("Client SNI lookup with {}", hostname);
-            if (hostname != null) {
-                Address address = null;
-
-                //set the remote address based on the proxy type. If not transparent, server
-                //address is already set in the Http1Connection handler
-                if(connectionContext.config().getProxyMode() == ProxyMode.TRANSPARENT) {
-                    InetSocketAddress dest = (InetSocketAddress) ctx.channel().remoteAddress();
-                    LOGGER.debug("Transparent Remote Address {}->{}:{}", hostname, dest.getAddress().toString(), dest.getPort());
-                    address = new Address(dest.toString(), dest.getPort());
-                } else {
-                    address = new Address(hostname, connectionContext.getServerAddr().getPort());
-                }
-                connectionContext.withServerAddr(address);
-            }
-            return ctx.executor().newSucceededFuture(null);
-        }
-
-        @Override
-        protected void onLookupComplete(ChannelHandlerContext ctx, String hostname, Future<Object> future) {
-            ctx.pipeline().remove(this);
         }
     }
 
