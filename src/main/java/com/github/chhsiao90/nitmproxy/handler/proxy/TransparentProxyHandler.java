@@ -89,13 +89,12 @@ public class TransparentProxyHandler extends ChannelDuplexHandler {
     }
 
     private void configHttp1(ChannelHandlerContext ctx) {
-        ctx.pipeline().replace(this, null, connectionContext.provider().http1FrontendHandler());
+        ctx.pipeline().replace(this, null, connectionContext.provider().http1EventHandler());
     }
 
     private void configHttp2(ChannelHandlerContext ctx) {
-        ctx.pipeline().replace(this, null, connectionContext.provider().http2FrontendHandler());
+        ctx.pipeline().replace(this, null, connectionContext.provider().http2EventHandler());
     }
-
 
     private class DetectSslHandler extends SslClientHelloHandler<Boolean> {
 
