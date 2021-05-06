@@ -116,21 +116,7 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
         protected Future<Object> lookup(ChannelHandlerContext ctx, String hostname) {
             LOGGER.debug("Client SNI lookup with {}", hostname);
             if (hostname != null) {
-                Address address = null;
-
-                //set the remote address based on the proxy type. If not transparent, server
-                //address is already set in the Http1Connection handler
-                if (connectionContext.config().getProxyMode() == ProxyMode.TRANSPARENT) {
-                    InetSocketAddress dest = (InetSocketAddress) ctx.channel().remoteAddress();
-                    String ip = NetUtil.toAddressString(dest.getAddress());
-                    int port = dest.getPort();
-
-                    LOGGER.debug("Transparent Remote Address {}->{}:{}", hostname,
-                            ip, port);
-                    address = new Address(ip, port);
-                } else {
-                    address = new Address(hostname, connectionContext.getServerAddr().getPort());
-                }
+                Address address = new Address(hostname, connectionContext.getServerAddr().getPort());
                 connectionContext.withServerAddr(address);
             }
             return ctx.executor().newSucceededFuture(null);
