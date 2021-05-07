@@ -124,6 +124,7 @@ public class TransparentProxyHandler extends ChannelDuplexHandler {
 
         @Override
         protected void onLookupComplete(ChannelHandlerContext ctx, String hostname, Future<Object> future) {
+            LOGGER.debug("Client SNI lookupComplete with {}", hostname);
             ctx.pipeline().remove(this);
         }
     }
@@ -150,13 +151,20 @@ public class TransparentProxyHandler extends ChannelDuplexHandler {
         }
 
         @Override
+        protected Future<String> lookup(ChannelHandlerContext ctx, List<String> protocols) {
+            LOGGER.debug("Client ALPN lookup with {}", protocols);
+            connectionContext.tlsCtx().protocolsPromise().setSuccess(protocols);
+            return ctx.executor().newSucceededFuture(null);
+        }
+
+        @Override
         protected void onLookupComplete(ChannelHandlerContext ctx, List<String> protocols,
                                         Future<String> future) throws Exception {
             if (!future.isSuccess()) {
                 LOGGER.debug("ALPN negotiate failed with {}", future.cause().getMessage());
                 ctx.close();
             } else {
-                LOGGER.debug("ALPN negotiated with {}", future.getNow());
+                LOGGER.debug("ALPN negotiated with {}", protocols);
                 SslHandler sslHandler = sslHandler(ctx.alloc());
                 try {
                     ctx.pipeline()
@@ -171,12 +179,6 @@ public class TransparentProxyHandler extends ChannelDuplexHandler {
             }
         }
 
-        @Override
-        protected Future<String> lookup(ChannelHandlerContext ctx, List<String> protocols) {
-            LOGGER.debug("Client ALPN lookup with {}", protocols);
-            connectionContext.tlsCtx().protocolsPromise().setSuccess(protocols);
-            return connectionContext.tlsCtx().protocolPromise();
-        }
     }
 
     private class AlpnHandler extends ApplicationProtocolNegotiationHandler {

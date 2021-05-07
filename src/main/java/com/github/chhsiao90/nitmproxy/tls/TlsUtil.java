@@ -20,8 +20,11 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 
 import javax.net.ssl.SSLException;
 import javax.net.ssl.TrustManagerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class TlsUtil {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TlsUtil.class);
 
     private static final TrustManagerFactory TRUST_MANAGER_FACTORY;
 
@@ -62,8 +65,18 @@ public final class TlsUtil {
     public static SslContext ctxForServer(ConnectionContext context) throws SSLException {
         String certFile = new File(context.config().getCertFile()).getAbsolutePath();
         String keyFile = new File(context.config().getKeyFile()).getAbsolutePath();
+
+        LOGGER.debug("ABBAS CERTS: {}, {}, {}", certFile, keyFile, context.getServerAddr().getHost());
+
         Certificate certificate = CertUtil.newCert(
                 certFile, keyFile, context.getServerAddr().getHost());
+
+        LOGGER.debug("ABBAS SSL: {}, {}, {}, {}",
+                context.getServerAddr().getHost(),
+                context.config().getTlsProtocols(), ,
+                context.config().getSslProvider(),
+                alpnProtocols(context.tlsCtx()));
+
         return SslContextBuilder
                 .forServer(certificate.getKeyPair().getPrivate(), certificate.getChain())
                 .protocols(context.config().getTlsProtocols())
