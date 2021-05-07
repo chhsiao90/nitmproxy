@@ -75,8 +75,6 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
             } else {
                 handleHttpProxyConnection(ctx, request);
             }
-        } else if (master.config().getProxyMode() == ProxyMode.TRANSPARENT) {
-            handleHttpProxyConnection(ctx, request);
         } else {
             LOGGER.debug("{} : {}", connectionContext, request);
             connectionContext.serverChannel().writeAndFlush(ReferenceCountUtil.retain(request));
@@ -133,4 +131,17 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
             connectionContext.tlsCtx().disableTls();
         }
     }
+
+    private void handleTransparentProxyConnection(ChannelHandlerContext ctx,
+                                           FullHttpRequest request) throws Exception {
+        HttpUrl httpUrl = HttpUrl.resolve(request.uri());
+        Address address = new Address(httpUrl.getHost(), httpUrl.getPort());
+        FullHttpRequest newRequest = request.copy();
+        connectionContext.clientChannel().writeAndFlush(newRequest);
+
+        if (!connectionContext.tlsCtx().isNegotiated()) {
+            connectionContext.tlsCtx().disableTls();
+        }
+    }
+
 }
