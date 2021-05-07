@@ -3,42 +3,23 @@ package com.github.chhsiao90.nitmproxy.handler.proxy;
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
-import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.handler.protocol.tls.AbstractAlpnHandler;
-import com.github.chhsiao90.nitmproxy.handler.protocol.tls.TlsFrontendHandler;
-import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.github.chhsiao90.nitmproxy.tls.TlsUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
-import io.netty.handler.codec.http.*;
-import io.netty.handler.codec.socksx.SocksMessage;
-import io.netty.handler.codec.socksx.SocksPortUnificationServerHandler;
-import io.netty.handler.codec.socksx.v4.DefaultSocks4CommandResponse;
-import io.netty.handler.codec.socksx.v4.Socks4CommandRequest;
-import io.netty.handler.codec.socksx.v4.Socks4CommandStatus;
-import io.netty.handler.codec.socksx.v4.Socks4CommandType;
-import io.netty.handler.codec.socksx.v5.*;
 import io.netty.handler.ssl.*;
-import io.netty.util.NetUtil;
-import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
-import java.net.InetAddress;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpHeadersUtil.getContentType;
 import static com.google.common.base.Preconditions.checkState;
-import static io.netty.handler.codec.http.HttpHeaderNames.HOST;
 import static io.netty.util.ReferenceCountUtil.*;
 import static java.lang.String.format;
-import static java.lang.System.currentTimeMillis;
 
 public class TransparentProxyHandler extends ChannelDuplexHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(TransparentProxyHandler.class);
@@ -57,6 +38,7 @@ public class TransparentProxyHandler extends ChannelDuplexHandler {
         ctx.pipeline()
                 .addBefore(ctx.name(), null, new DetectSslHandler(ctx))
                 .addBefore(ctx.name(), null, new SniExtractorHandler())
+                .addBefore(ctx.name(), null, new ConnectToRemote())
                 .addBefore(ctx.name(), null, new AlpnNegotiateHandler(ctx));
     }
 
@@ -120,6 +102,7 @@ public class TransparentProxyHandler extends ChannelDuplexHandler {
                 configHttp1(tlsCtx);
                 ctx.pipeline().remove(SniExtractorHandler.class);
                 ctx.pipeline().remove(AlpnNegotiateHandler.class);
+                ctx.pipeline().remove(ConnectToRemote.class);
                 ctx.pipeline().remove(ctx.name());
             } else {
                 ctx.pipeline().remove(ctx.name());
@@ -135,12 +118,6 @@ public class TransparentProxyHandler extends ChannelDuplexHandler {
             if (hostname != null) {
                 Address address = new Address(hostname, 443);
                 connectionContext.withServerAddr(address);
-                connectionContext.connect(connectionContext.getServerAddr(), ctx).addListener((future) -> {
-                    if (!future.isSuccess()) {
-                        ctx.close();
-                    }
-                });
-
             }
             return ctx.executor().newSucceededFuture(null);
         }
@@ -148,6 +125,19 @@ public class TransparentProxyHandler extends ChannelDuplexHandler {
         @Override
         protected void onLookupComplete(ChannelHandlerContext ctx, String hostname, Future<Object> future) {
             ctx.pipeline().remove(this);
+        }
+    }
+
+    private class ConnectToRemote extends ChannelInboundHandlerAdapter {
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            connectionContext.connect(connectionContext.getServerAddr(), ctx).addListener((future) -> {
+                if (!future.isSuccess()) {
+                    ctx.close();
+                }
+            });
+            ctx.fireChannelRead(msg);
         }
     }
 
