@@ -115,8 +115,13 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
         @Override
         protected Future<Object> lookup(ChannelHandlerContext ctx, String hostname) {
             LOGGER.debug("Client SNI lookup with {}", hostname);
+            Address address = null;
             if (hostname != null) {
-                Address address = new Address(hostname, connectionContext.getServerAddr().getPort());
+                if(connectionContext.config().getProxyMode() == ProxyMode.TRANSPARENT) {
+                    address = new Address(hostname, 443);
+                } else {
+                    address = new Address(hostname, connectionContext.getServerAddr().getPort());
+                }
                 connectionContext.withServerAddr(address);
             }
             return ctx.executor().newSucceededFuture(null);

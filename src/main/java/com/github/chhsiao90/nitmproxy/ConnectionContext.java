@@ -68,7 +68,7 @@ public class ConnectionContext {
             case SOCKS:
                 return new SocksProxyHandler(master, this);
             case TRANSPARENT:
-                return new TransparentProxyHandler(master,this);
+                return new TransparentProxyHandler(this);
             default:
                 throw new IllegalStateException("No proxy mode available: " + master.config().getProxyMode());
         }
