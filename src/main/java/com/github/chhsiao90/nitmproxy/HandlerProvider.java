@@ -1,5 +1,8 @@
 package com.github.chhsiao90.nitmproxy;
 
+import com.github.chhsiao90.nitmproxy.exception.NitmProxyException;
+import com.github.chhsiao90.nitmproxy.handler.ForwardHandler;
+import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolSelectHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1BackendHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1EventHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1FrontendHandler;
@@ -18,6 +21,34 @@ public class HandlerProvider {
     public HandlerProvider(NitmProxyMaster master, ConnectionContext context) {
         this.master = master;
         this.context = context;
+    }
+
+    public ChannelHandler protocolSelectHandler() {
+        return new ProtocolSelectHandler(context);
+    }
+
+    public ChannelHandler frontendHandler(String protocol) {
+        if (protocol.equals(Protocols.HTTP_1)) {
+            return http1FrontendHandler();
+        } else if (protocol.equals(Protocols.HTTP_2)) {
+            return http2FrontendHandler();
+        } else if (protocol.equals(Protocols.FORWARD)) {
+            return forwardFrontendHandler();
+        } else {
+            throw new NitmProxyException("Unsupported protocol");
+        }
+    }
+
+    public ChannelHandler backendHandler(String protocol) {
+        if (protocol.equals(Protocols.HTTP_1)) {
+            return http1BackendHandler();
+        } else if (protocol.equals(Protocols.HTTP_2)) {
+            return http2BackendHandler();
+        } else if (protocol.equals(Protocols.FORWARD)) {
+            return forwardBackendHandler();
+        } else {
+            throw new NitmProxyException("Unsupported protocol");
+        }
     }
 
     public ChannelHandler http1BackendHandler() {
@@ -50,5 +81,13 @@ public class HandlerProvider {
 
     public ChannelHandler tlsBackendHandler() {
         return new TlsBackendHandler(master, context);
+    }
+
+    public ChannelHandler forwardFrontendHandler() {
+        return new ForwardHandler(context.serverChannel());
+    }
+
+    public ChannelHandler forwardBackendHandler() {
+        return new ForwardHandler(context.clientChannel());
     }
 }

@@ -1,14 +1,16 @@
 package com.github.chhsiao90.nitmproxy;
 
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
+import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolDetector;
+import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1ProtocolDetector;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.google.common.base.Joiner;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManager;
-
 import java.security.Provider;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static java.lang.String.*;
@@ -16,6 +18,7 @@ import static java.lang.System.*;
 import static java.util.Arrays.*;
 
 public class NitmProxyConfig {
+
     private ProxyMode proxyMode;
 
     private String host;
@@ -34,6 +37,8 @@ public class NitmProxyConfig {
     private List<HttpListener> httpListeners;
     private TrustManager trustManager;
 
+    private List<ProtocolDetector> detectors;
+
     // Default values
     public NitmProxyConfig() {
         proxyMode = ProxyMode.HTTP;
@@ -49,6 +54,7 @@ public class NitmProxyConfig {
         maxContentLength = 1024 * 1024;
 
         httpListeners = new ArrayList<>();
+        detectors = Collections.singletonList(Http1ProtocolDetector.INSTANCE);
     }
 
     public ProxyMode getProxyMode() {
@@ -145,6 +151,14 @@ public class NitmProxyConfig {
 
     public void setHttpListeners(List<HttpListener> httpListeners) {
         this.httpListeners = httpListeners;
+    }
+
+    public List<ProtocolDetector> getDetectors() {
+        return detectors;
+    }
+
+    public void setDetectors(List<ProtocolDetector> detectors) {
+        this.detectors = detectors;
     }
 
     @Override

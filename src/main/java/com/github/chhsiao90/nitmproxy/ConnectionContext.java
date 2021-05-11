@@ -11,6 +11,7 @@ import io.netty.channel.ChannelInitializer;
 import static java.lang.String.*;
 
 public class ConnectionContext {
+
     private NitmProxyMaster master;
     private HandlerProvider provider;
 

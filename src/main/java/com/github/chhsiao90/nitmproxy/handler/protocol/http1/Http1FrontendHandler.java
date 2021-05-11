@@ -3,6 +3,7 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.http1;
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
+import com.github.chhsiao90.nitmproxy.Protocols;
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
 import com.github.chhsiao90.nitmproxy.event.OutboundChannelClosedEvent;
 import com.github.chhsiao90.nitmproxy.http.HttpUrl;
@@ -129,6 +130,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
         });
         if (!connectionContext.tlsCtx().isNegotiated()) {
             connectionContext.tlsCtx().disableTls();
+            connectionContext.tlsCtx().protocolPromise().setSuccess(Protocols.HTTP_1);
         }
     }
 }
