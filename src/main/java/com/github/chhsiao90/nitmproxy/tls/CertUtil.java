@@ -16,9 +16,7 @@ import java.util.Date;
 
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.Extension;
-import org.bouncycastle.asn1.x509.GeneralName;
-import org.bouncycastle.asn1.x509.GeneralNames;
+import org.bouncycastle.asn1.x509.*;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -64,6 +62,12 @@ public class CertUtil {
             GeneralNames generalNames = GeneralNames.getInstance(
                     new DERSequence(new GeneralName(GeneralName.dNSName, host)));
             x509.addExtension(Extension.subjectAlternativeName, true, generalNames);
+
+            //add extended key usage
+            x509.addExtension(
+                    Extension.extendedKeyUsage,
+                    true,
+                    new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
 
             ContentSigner signer = new JcaContentSignerBuilder("SHA256WithRSAEncryption")
                     .build(keyPair.getPrivate());

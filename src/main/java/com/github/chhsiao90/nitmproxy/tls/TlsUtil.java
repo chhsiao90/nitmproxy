@@ -73,7 +73,7 @@ public final class TlsUtil {
 
         LOGGER.debug("ABBAS SSL: {}, {}, {}, {}",
                 context.getServerAddr().getHost(),
-                context.config().getTlsProtocols(), ,
+                context.config().getTlsProtocols(),
                 context.config().getSslProvider(),
                 alpnProtocols(context.tlsCtx()));
 
