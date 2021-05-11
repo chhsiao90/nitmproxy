@@ -56,6 +56,10 @@ public class ConnectionContext {
         return this;
     }
 
+    public NitmProxyMaster master() {
+        return master;
+    }
+
     public NitmProxyConfig config() {
         return master.config();
     }
