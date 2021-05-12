@@ -75,7 +75,7 @@ public class NitmProxy {
                       .longOpt("mode")
                       .hasArg()
                       .argName("MODE")
-                      .desc("proxy mode(HTTP, SOCKS), default: HTTP")
+                      .desc("proxy mode(HTTP, SOCKS, TRANSPARENT), default: HTTP")
                       .build());
         options.addOption(
                 Option.builder("h")

@@ -15,7 +15,7 @@ usage: nitmproxy [--cert <CERTIFICATE>] [--clientNoHttp2] [-h <HOST>] [-k]
  -h,--host <HOST>          listening host, default: 127.0.0.1
  -k,--insecure             not verify on server certificate
     --key <KEY>            key used by server(*.pem), default: key.pem
- -m,--mode <MODE>          proxy mode(HTTP, SOCKS), default: HTTP
+ -m,--mode <MODE>          proxy mode(HTTP, SOCKS, TRANSPARENT), default: HTTP
  -p,--port <PORT>          listening port, default: 8080
 ```
 
@@ -25,6 +25,7 @@ usage: nitmproxy [--cert <CERTIFICATE>] [--clientNoHttp2] [-h <HOST>] [-k]
 - HTTP Proxy
 - HTTP Proxy (Tunnel)
 - Socks Proxy
+- Transparent Proxy
 
 ### Support Protocol
 - HTTP/1
@@ -57,3 +58,24 @@ https://search.maven.org/artifact/org.conscrypt/conscrypt-android
 ```java
 config.setSslProvider(Conscrypt.newProvider());
 ```
+
+**Add conscrypt-android dependency**
+
+https://search.maven.org/artifact/org.conscrypt/conscrypt-android
+
+**Configure Conscrypt SSL provider**
+
+```java
+config.setSslProvider(Conscrypt.newProvider());
+```
+### For a transparent proxy, how do I port forward HTTP/HTTPS requests?
+
+### Linux
+```
+sysctl -w net.ipv4.ip_forward=1
+sysctl -w net.ipv6.conf.all.forwarding=1
+sysctl -w net.ipv4.conf.all.send_redirects=0
+iptables -t nat -A OUTPUT -p tcp --dport 80 -j DNAT --to-destination <transparent proxy ip>:<transparent proxy port>
+iptables -t nat -A OUTPUT -p tcp --dport 443 -j DNAT --to-destination <transparent proxy ip>:<transparent proxy port>
+```
+See Linux documentation on how to persistent these changes across reboots.

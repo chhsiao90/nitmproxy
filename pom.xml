@@ -68,20 +68,51 @@
           </execution>
         </executions>
       </plugin>
+      <!-- we can either fork it as a seperate JVM or run it within the same process -->
       <plugin>
-        <groupId>kr.motd.maven</groupId>
+        <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>1.0.0.Final</version>
+        <version>3.0.0</version>
         <configuration>
-          <executable>${java.home}/bin/java</executable>
-          <commandlineArgs>
-            ${argLine.alpnAgent}
-            -classpath %classpath
-            ${argLine.leak}
-            ${main.class}
-            ${main.args}
-          </commandlineArgs>
+          <skip>false</skip>
         </configuration>
+
+        <executions>
+          <execution>
+            <id>inprocess</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <mainClass>${main.class}</mainClass>
+              <commandlineArgs>
+                ${main.args}
+              </commandlineArgs>
+            </configuration>
+          </execution>
+
+          <execution>
+            <id>fork</id>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>${java.home}/bin/java</executable>
+
+              <!--
+              the use of ALPN agent is really not required after OpenJDK 1.8.0_252
+              and it is encouraged to remove it
+              -->
+              <commandlineArgs>
+                ${argLine.alpnAgent}
+                -classpath %classpath
+                ${argLine.leak}
+                ${main.class}
+                ${main.args}
+              </commandlineArgs>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

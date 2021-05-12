@@ -27,3 +27,9 @@ buildNumber.properties
 # PEM
 key.pem
 server.pem
+ca.key
+server.crt
+
+#IntelliJ
+*.iml
+.idea

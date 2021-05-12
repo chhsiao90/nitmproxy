@@ -2,6 +2,7 @@ package com.github.chhsiao90.nitmproxy;
 
 import com.github.chhsiao90.nitmproxy.handler.proxy.HttpProxyHandler;
 import com.github.chhsiao90.nitmproxy.handler.proxy.SocksProxyHandler;
+import com.github.chhsiao90.nitmproxy.handler.proxy.TransparentProxyHandler;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
@@ -67,12 +68,14 @@ public class ConnectionContext {
 
     public ChannelHandler proxyHandler() {
         switch (master.config().getProxyMode()) {
-        case HTTP:
-            return new HttpProxyHandler(this);
-        case SOCKS:
-            return new SocksProxyHandler(master, this);
-        default:
-            throw new IllegalStateException("No proxy mode available: " + master.config().getProxyMode());
+            case HTTP:
+                return new HttpProxyHandler(this);
+            case SOCKS:
+                return new SocksProxyHandler(master, this);
+            case TRANSPARENT:
+                return new TransparentProxyHandler(this);
+            default:
+                throw new IllegalStateException("No proxy mode available: " + master.config().getProxyMode());
         }
     }
 
@@ -120,7 +123,7 @@ public class ConnectionContext {
     public String toString() {
         if (serverAddr != null) {
             return format("[Client (%s)] <=> [Server (%s)]",
-                          clientAddr, serverAddr);
+                    clientAddr, serverAddr);
         }
         return format("[Client (%s)] <=> [PROXY]", clientAddr);
     }

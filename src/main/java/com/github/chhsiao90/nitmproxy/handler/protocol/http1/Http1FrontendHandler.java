@@ -14,6 +14,8 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -76,6 +78,8 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
             } else {
                 handleHttpProxyConnection(ctx, request);
             }
+        } else if (master.config().getProxyMode() == ProxyMode.TRANSPARENT && !connectionContext.connected()) {
+            handleTransparentProxyConnection(ctx, request);
         } else {
             LOGGER.debug("{} : {}", connectionContext, request);
             connectionContext.serverChannel().writeAndFlush(ReferenceCountUtil.retain(request));
@@ -105,7 +109,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
         FullHttpResponse response =
                 new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
         LOGGER.debug("{} : {}", connectionContext,
-                     response.getClass().getSimpleName());
+                response.getClass().getSimpleName());
         ctx.writeAndFlush(response);
         ctx.pipeline().replace(Http1FrontendHandler.this, null,
                 connectionContext.provider().tlsFrontendHandler());
@@ -132,5 +136,37 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
             connectionContext.tlsCtx().disableTls();
             connectionContext.tlsCtx().protocolPromise().setSuccess(Protocols.HTTP_1);
         }
+    }
+
+    private void handleTransparentProxyConnection(ChannelHandlerContext ctx,
+                                                  FullHttpRequest request) throws Exception {
+        String hostHeader = request.headers().get(HttpHeaderNames.HOST);
+        String[] hostPort = hostHeader.split(":");
+        String host = hostPort[0];
+        int port = 80;
+
+        if (hostPort.length > 1) {
+            try {
+                port = Integer.parseInt(hostPort[1]);
+            } catch (NumberFormatException nfe) {
+                LOGGER.debug("Invalid port number for host {}", hostPort[1]);
+            }
+        }
+
+        FullHttpRequest newRequest = request.copy();
+        Address address = new Address(host, port);
+
+        connectionContext.connect(address, ctx).addListener((ChannelFuture future) -> {
+            if (future.isSuccess()) {
+                LOGGER.debug("{} : {}", connectionContext, newRequest);
+                future.channel().writeAndFlush(newRequest);
+            } else {
+                newRequest.release();
+                ctx.channel().close();
+            }
+        });
+
+        connectionContext.tlsCtx().disableTls();
+        connectionContext.tlsCtx().protocolPromise().setSuccess(Protocols.HTTP_1);
     }
 }

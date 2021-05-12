@@ -3,22 +3,27 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.tls;
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.Protocols;
+import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
 import com.github.chhsiao90.nitmproxy.exception.NitmProxyException;
 import com.github.chhsiao90.nitmproxy.tls.TlsUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.ssl.AbstractSniHandler;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import io.netty.handler.ssl.SslClientHelloHandler;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.util.NetUtil;
 import io.netty.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.netty.util.ReferenceCountUtil.*;
@@ -31,6 +36,10 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
 
     public TlsFrontendHandler(ConnectionContext connectionContext) {
         this.connectionContext = connectionContext;
+    }
+
+    boolean isTransparentProxy() {
+        return connectionContext.config().getProxyMode() == ProxyMode.TRANSPARENT;
     }
 
     @Override
@@ -99,6 +108,12 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
                 LOGGER.debug("SSL detection failed with {}", future.cause().getMessage());
                 ctx.close();
             } else if (!future.getNow()) {
+                if (isTransparentProxy()) {
+                    //in a case of transparent proxy, remote connection happens only
+                    //after the SNI lookup since destination IP is not reliable
+                    connectionContext.tlsCtx().protocols(ctx.executor().newPromise());
+                    connectionContext.tlsCtx().protocol(ctx.executor().newPromise());
+                }
                 connectionContext.tlsCtx().disableTls();
                 ctx.pipeline().addAfter(ctx.name(), null, connectionContext.provider().protocolSelectHandler());
                 ctx.pipeline().remove(tlsCtx.name());
@@ -117,14 +132,40 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
         protected Future<Object> lookup(ChannelHandlerContext ctx, String hostname) {
             LOGGER.debug("Client SNI lookup with {}", hostname);
             if (hostname != null) {
-                connectionContext.withServerAddr(new Address(hostname, connectionContext.getServerAddr().getPort()));
+                Address address = null;
+
+                //in a transparent proxy, destination host ip and port are unreliable.
+                //need to assume outbound port of 443 and we need to connect to remote
+                if (isTransparentProxy()) {
+                    address = new Address(hostname, 443);
+                } else {
+                    address = new Address(hostname, connectionContext.getServerAddr().getPort());
+                }
+                connectionContext.withServerAddr(address);
             }
             return ctx.executor().newSucceededFuture(null);
         }
 
         @Override
         protected void onLookupComplete(ChannelHandlerContext ctx, String hostname, Future<Object> future) {
-            ctx.pipeline().remove(this);
+            if (isTransparentProxy()) {
+                ctx.pipeline().replace(ctx.name(), null, new ConnectToRemote());
+            } else {
+                ctx.pipeline().remove(this);
+            }
+        }
+    }
+
+    public class ConnectToRemote extends ChannelInboundHandlerAdapter {
+
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            connectionContext.connect(connectionContext.getServerAddr(), ctx).addListener((future) -> {
+                if (!future.isSuccess()) {
+                    ctx.close();
+                }
+            });
+            ctx.fireChannelRead(msg);
         }
     }
 
