@@ -1,28 +1,7 @@
 package com.github.chhsiao90.nitmproxy.tls;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.math.BigInteger;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.Provider;
-import java.security.SecureRandom;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.time.Instant;
-import java.time.Year;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
-import java.util.Date;
-
 import org.bouncycastle.asn1.DERSequence;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.BasicConstraints;
 import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
@@ -43,6 +22,31 @@ import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.Provider;
+import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.time.Instant;
+import java.time.Year;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
+
+import static com.google.common.io.Files.*;
+import static java.nio.charset.StandardCharsets.*;
 
 public class CertUtil {
 
@@ -66,11 +70,10 @@ public class CertUtil {
                         .atStartOfDay(ZoneId.systemDefault())
                         .toInstant());
 
+            JcaPEMKeyConverter converter = new JcaPEMKeyConverter().setProvider(PROVIDER);
             X509CertificateHolder parent = readPemFromFile(parentCertFile);
-            PEMKeyPair pemKeyPair = readPemFromFile(keyFile);
-            KeyPair keyPair = new JcaPEMKeyConverter()
-                    .setProvider(PROVIDER)
-                    .getKeyPair(pemKeyPair);
+            PublicKey publicKey = converter.getPublicKey(parent.getSubjectPublicKeyInfo());
+            PrivateKey privateKey = converter.getPrivateKey(getPrivateKey(keyFile));
 
             X509v3CertificateBuilder x509 = new JcaX509v3CertificateBuilder(
                     parent.getSubject(),
@@ -78,7 +81,7 @@ public class CertUtil {
                     before,
                     after,
                     new X500Name("CN=" + host),
-                    keyPair.getPublic());
+                    publicKey);
             GeneralNames generalNames = GeneralNames.getInstance(
                     new DERSequence(new GeneralName(GeneralName.dNSName, host)));
             x509.addExtension(Extension.subjectAlternativeName, true, generalNames);
@@ -90,13 +93,13 @@ public class CertUtil {
                     new ExtendedKeyUsage(KeyPurposeId.id_kp_serverAuth));
 
             ContentSigner signer = new JcaContentSignerBuilder("SHA256WithRSAEncryption")
-                    .build(keyPair.getPrivate());
+                    .build(privateKey);
 
             JcaX509CertificateConverter x509CertificateConverter = new JcaX509CertificateConverter()
                     .setProvider(PROVIDER);
 
             return new Certificate(
-                    keyPair,
+                    new KeyPair(publicKey, privateKey),
                     x509CertificateConverter.getCertificate(x509.build(signer)),
                     x509CertificateConverter.getCertificate(parent));
         } catch (Exception e) {
@@ -104,13 +107,18 @@ public class CertUtil {
         }
     }
 
+    /**
+     * Read pem from file.
+     *
+     * @param pemFile the pem file
+     * @param <T> the type of the pem
+     * @return the parsed pem
+     * @throws IOException if there is any exception while reading the pem file
+     */
+    @SuppressWarnings({ "UnstableApiUsage", "unchecked" })
     public static <T> T readPemFromFile(String pemFile) throws IOException {
-        try (PEMParser pemParser = new PEMParser(new FileReader(pemFile))) {
-            Object o = pemParser.readObject();
-
-            @SuppressWarnings("unchecked")
-            T t = (T) o;
-            return t;
+        try (PEMParser pemParser = new PEMParser(newReader(new File(pemFile), US_ASCII))) {
+            return (T) pemParser.readObject();
         }
     }
 
@@ -134,6 +142,16 @@ public class CertUtil {
             writer.flush();
             return outputStream.toByteArray();
         }
+    }
+
+    private static PrivateKeyInfo getPrivateKey(String pemFile) throws IOException {
+        Object object = readPemFromFile(pemFile);
+        if (object instanceof PEMKeyPair) {
+            return ((PEMKeyPair) object).getPrivateKeyInfo();
+        } else if (object instanceof PrivateKeyInfo) {
+            return (PrivateKeyInfo) object;
+        }
+        throw new IOException("Not a valid private key: " + pemFile);
     }
 
     /**
