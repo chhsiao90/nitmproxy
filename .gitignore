@@ -28,7 +28,7 @@ buildNumber.properties
 key.pem
 server.pem
 ca.key
-server-ca.crt
+server.crt
 
 #IntelliJ
 *.iml
