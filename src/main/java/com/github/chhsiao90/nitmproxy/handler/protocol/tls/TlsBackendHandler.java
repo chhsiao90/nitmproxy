@@ -140,7 +140,7 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
         private ChannelHandlerContext tlsCtx;
 
         private AlpnHandler(ChannelHandlerContext tlsCtx) {
-            super(ApplicationProtocolNames.HTTP_1_1);
+            super(Protocols.FORWARD);
             this.tlsCtx = tlsCtx;
         }
 
