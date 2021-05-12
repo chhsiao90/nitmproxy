@@ -46,7 +46,7 @@ public class CertUtil {
             Date before = Date.from(
                     Instant.now()
                     .atZone(ZoneId.systemDefault())
-                    .minusDays(1).toInstant());
+                    .minusMonths(6).toInstant());
 
             Date after = Date.from(
                     Year.now()
