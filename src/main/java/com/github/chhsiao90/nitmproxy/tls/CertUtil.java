@@ -149,7 +149,6 @@ public class CertUtil {
         return keyGen.generateKeyPair();
     }
 
-
     /**
      * Generate a server certificate
      *
