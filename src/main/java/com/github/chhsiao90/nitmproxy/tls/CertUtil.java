@@ -16,7 +16,11 @@ import java.util.Date;
 
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.*;
+import org.bouncycastle.asn1.x509.ExtendedKeyUsage;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
+import org.bouncycastle.asn1.x509.KeyPurposeId;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -38,7 +42,12 @@ public class CertUtil {
 
     public static Certificate newCert(String parentCertFile, String keyFile, String host) {
         try {
-            Date before = Date.from(Instant.now());
+            //need a date before today to adjust for other time zones
+            Date before = Date.from(
+                    Instant.now()
+                    .atZone(ZoneId.systemDefault())
+                    .minusDays(1).toInstant());
+
             Date after = Date.from(
                     Year.now()
                         .plus(1, ChronoUnit.YEARS)
@@ -63,7 +72,7 @@ public class CertUtil {
                     new DERSequence(new GeneralName(GeneralName.dNSName, host)));
             x509.addExtension(Extension.subjectAlternativeName, true, generalNames);
 
-            //add extended key usage
+            //add extended key usage needed for newer Mac OS requirements
             x509.addExtension(
                     Extension.extendedKeyUsage,
                     true,

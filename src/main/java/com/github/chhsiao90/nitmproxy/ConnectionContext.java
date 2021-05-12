@@ -12,6 +12,7 @@ import io.netty.channel.ChannelInitializer;
 import static java.lang.String.*;
 
 public class ConnectionContext {
+
     private NitmProxyMaster master;
     private HandlerProvider provider;
 
@@ -57,6 +58,10 @@ public class ConnectionContext {
         return this;
     }
 
+    public NitmProxyMaster master() {
+        return master;
+    }
+
     public NitmProxyConfig config() {
         return master.config();
     }
@@ -68,7 +73,7 @@ public class ConnectionContext {
             case SOCKS:
                 return new SocksProxyHandler(master, this);
             case TRANSPARENT:
-                return new TransparentProxyHandler(master,this);
+                return new TransparentProxyHandler(master, this);
             default:
                 throw new IllegalStateException("No proxy mode available: " + master.config().getProxyMode());
         }

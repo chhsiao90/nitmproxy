@@ -15,6 +15,6 @@ public class ForwardHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, ByteBuf byteBuf) throws Exception {
-        outboundChannel.writeAndFlush(byteBuf);
+        outboundChannel.writeAndFlush(byteBuf.retain());
     }
 }

@@ -3,20 +3,24 @@ package com.github.chhsiao90.nitmproxy;
 import com.github.chhsiao90.nitmproxy.channel.BackendChannelBootstrap;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerManager;
+import com.github.chhsiao90.nitmproxy.tls.CertManager;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 
 public class NitmProxyMaster {
+
     private NitmProxyConfig config;
     private BackendChannelBootstrap backendChannelBootstrap;
     private NitmProxyListenerManager nitmProxyListenerManager;
+    private CertManager certManager;
 
     public NitmProxyMaster(NitmProxyConfig config,
                            BackendChannelBootstrap backendChannelBootstrap) {
         this.config = config;
         this.backendChannelBootstrap = backendChannelBootstrap;
         this.nitmProxyListenerManager = new NitmProxyListenerManager(config.getHttpListeners());
+        this.certManager = new CertManager(config);
     }
 
     public NitmProxyConfig config() {
@@ -29,6 +33,10 @@ public class NitmProxyMaster {
 
     public HttpListener httpEventListener() {
         return nitmProxyListenerManager;
+    }
+
+    public CertManager certManager() {
+        return certManager;
     }
 
     public ChannelFuture connect(ChannelHandlerContext fromCtx, ConnectionContext connectionContext,

@@ -1,7 +1,12 @@
-#sudo openssl req -nodes -x509 -newkey rsa:4096 -keyout key.pem -out server.pem -days 180 
-rm *.pem *.crt *.key
+# create a private key
 openssl genrsa -out ca.key 2048
 openssl rsa -in ca.key -out key.pem -outform PEM
-openssl req -sha256 -new -x509 -days 365 -key ca.key -out server.pem \
-	-subj "/C=CN/ST=GD/L=SZ/O=lee/OU=study/CN=SafeKids"
-#openssl x509 -inform DER -outform PEM -in server.crt -out server.pem
+
+# create a SSL certificate
+# extensions required by apple https://support.apple.com/en-us/HT210176
+openssl req -new -x509 -sha256 -days 365 -key ca.key -out server-ca.cert \
+	-subj "/C=US/ST=VA/L=Vienna/O=Nitm Org/OU=Nitm Proxy/CN=Nitmproxy CA Root" \
+    -addext "extendedKeyUsage = serverAuth"
+
+# save another copy with .pem extension
+cp server-ca.cert server.pem

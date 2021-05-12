@@ -2,6 +2,8 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.tls;
 
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
+import com.github.chhsiao90.nitmproxy.Protocols;
+import com.github.chhsiao90.nitmproxy.exception.NitmProxyException;
 import com.github.chhsiao90.nitmproxy.tls.TlsUtil;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
@@ -39,14 +41,22 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
         LOGGER.debug("{} : handlerAdded", connectionContext);
 
         connectionContext.tlsCtx().protocolsPromise().addListener(future -> {
-            if (future.isSuccess()) {
-                if (!connectionContext.tlsCtx().isEnabled()) {
-                    configHttp1(ctx);
-                } else {
-                    configSsl(ctx);
-                }
-            } else {
+            if (!future.isSuccess()) {
                 ctx.close();
+            } else if (connectionContext.tlsCtx().isEnabled()) {
+                configSsl(ctx);
+            } else if (connectionContext.tlsCtx().protocolPromise().isSuccess()) {
+                configureProtocol(ctx, connectionContext.tlsCtx().protocol());
+            } else if (connectionContext.tlsCtx().protocolPromise().isDone()) {
+                ctx.close();
+            } else {
+                connectionContext.tlsCtx().protocolPromise().addListener(protocolFuture -> {
+                    if (protocolFuture.isSuccess()) {
+                        configureProtocol(ctx, connectionContext.tlsCtx().protocol());
+                    } else {
+                        ctx.close();
+                    }
+                });
             }
         });
     }
@@ -82,8 +92,8 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         LOGGER.error(format("%s : exceptionCaught with %s",
-                            connectionContext, cause.getMessage()),
-                     cause);
+                connectionContext, cause.getMessage()),
+                cause);
         ctx.close();
     }
 
@@ -104,12 +114,13 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
         }
     }
 
-    private void configHttp1(ChannelHandlerContext ctx) {
-        ctx.pipeline().replace(this, null, connectionContext.provider().http1BackendHandler());
-    }
-
-    private void configHttp2(ChannelHandlerContext ctx) {
-        ctx.pipeline().replace(this, null, connectionContext.provider().http2BackendHandler());
+    private void configureProtocol(ChannelHandlerContext ctx, String protocol) {
+        try {
+            ctx.pipeline().replace(this, null, connectionContext.provider().backendHandler(protocol));
+        } catch (NitmProxyException e) {
+            LOGGER.error("{} : Unsupported protocol", connectionContext);
+            ctx.close();
+        }
     }
 
     /**
@@ -118,7 +129,7 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
      * @param ctx the channel handler context
      * @throws SSLException if ssl failure
      */
-    public void configSsl(ChannelHandlerContext ctx) throws SSLException {
+    private void configSsl(ChannelHandlerContext ctx) throws SSLException {
         SslHandler sslHandler = sslHandler(ctx.alloc());
         ctx.pipeline()
             .addBefore(ctx.name(), null, sslHandler)
@@ -139,11 +150,11 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
                 connectionContext.tlsCtx().protocolPromise().setSuccess(protocol);
             }
             if (ApplicationProtocolNames.HTTP_1_1.equals(protocol)) {
-                configHttp1(tlsCtx);
+                configureProtocol(tlsCtx, Protocols.HTTP_1);
             } else if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
-                configHttp2(tlsCtx);
+                configureProtocol(tlsCtx, Protocols.HTTP_2);
             } else {
-                throw new IllegalStateException("unknown protocol: " + protocol);
+                configureProtocol(tlsCtx, Protocols.FORWARD);
             }
         }
 

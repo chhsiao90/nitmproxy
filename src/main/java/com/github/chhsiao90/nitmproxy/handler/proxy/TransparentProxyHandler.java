@@ -7,8 +7,16 @@ import com.github.chhsiao90.nitmproxy.handler.protocol.tls.AbstractAlpnHandler;
 import com.github.chhsiao90.nitmproxy.tls.TlsUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.channel.*;
-import io.netty.handler.ssl.*;
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.handler.codec.http.HttpMessage;
+import io.netty.handler.codec.http.HttpObjectDecoder;
+import io.netty.handler.ssl.AbstractSniHandler;
+import io.netty.handler.ssl.ApplicationProtocolNames;
+import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
+import io.netty.handler.ssl.SslClientHelloHandler;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +106,9 @@ public class TransparentProxyHandler extends ChannelDuplexHandler {
                 LOGGER.debug("SSL detection failed with {}", future.cause().getMessage());
                 ctx.close();
             } else if (!future.getNow()) {
+                connectionContext.tlsCtx().protocols(ctx.executor().newPromise());
+                connectionContext.tlsCtx().protocol(ctx.executor().newPromise());
+
                 connectionContext.tlsCtx().disableTls();
                 configHttp1(tlsCtx);
                 ctx.pipeline().remove(SniExtractorHandler.class);
