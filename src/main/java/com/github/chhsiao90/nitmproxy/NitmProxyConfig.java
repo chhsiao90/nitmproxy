@@ -3,6 +3,7 @@ package com.github.chhsiao90.nitmproxy;
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
 import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolDetector;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1ProtocolDetector;
+import com.github.chhsiao90.nitmproxy.listener.ForwardListener;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.google.common.base.Joiner;
 
@@ -35,6 +36,7 @@ public class NitmProxyConfig {
     private int maxContentLength;
 
     private List<HttpListener> httpListeners;
+    private List<ForwardListener> forwardListeners;
     private TrustManager trustManager;
 
     private List<ProtocolDetector> detectors;
@@ -54,6 +56,7 @@ public class NitmProxyConfig {
         maxContentLength = 1024 * 1024;
 
         httpListeners = new ArrayList<>();
+        forwardListeners = new ArrayList<>();
         detectors = Collections.singletonList(Http1ProtocolDetector.INSTANCE);
     }
 
@@ -151,6 +154,14 @@ public class NitmProxyConfig {
 
     public void setHttpListeners(List<HttpListener> httpListeners) {
         this.httpListeners = httpListeners;
+    }
+
+    public List<ForwardListener> getForwardListeners() {
+        return forwardListeners;
+    }
+
+    public void setForwardListeners(List<ForwardListener> forwardListeners) {
+        this.forwardListeners = forwardListeners;
     }
 
     public List<ProtocolDetector> getDetectors() {
