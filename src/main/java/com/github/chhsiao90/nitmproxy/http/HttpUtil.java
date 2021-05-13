@@ -22,6 +22,8 @@ import static java.nio.charset.StandardCharsets.*;
 
 public class HttpUtil {
 
+    public static final int HTTP_PORT = 80;
+    public static final int HTTPS_PORT = 443;
     public static final HttpVersion HTTP_2 = new HttpVersion("http/2.0", true);
 
     private HttpUtil() {

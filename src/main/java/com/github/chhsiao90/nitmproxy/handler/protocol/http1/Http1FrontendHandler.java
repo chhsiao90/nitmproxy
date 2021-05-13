@@ -15,7 +15,6 @@ import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -26,6 +25,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.github.chhsiao90.nitmproxy.http.HttpUtil.*;
 
 public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
@@ -99,7 +100,7 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
 
     private void handleTunnelProxyConnection(ChannelHandlerContext ctx,
                                              FullHttpRequest request) throws Exception {
-        Address address = Address.resolve(request.uri());
+        Address address = Address.resolve(request.uri(), HTTPS_PORT);
         connectionContext.connect(address, ctx).addListener((future) -> {
             if (!future.isSuccess()) {
                 ctx.close();
@@ -138,24 +139,9 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
         }
     }
 
-    private void handleTransparentProxyConnection(ChannelHandlerContext ctx,
-                                                  FullHttpRequest request) throws Exception {
-        String hostHeader = request.headers().get(HttpHeaderNames.HOST);
-        String[] hostPort = hostHeader.split(":");
-        String host = hostPort[0];
-        int port = 80;
-
-        if (hostPort.length > 1) {
-            try {
-                port = Integer.parseInt(hostPort[1]);
-            } catch (NumberFormatException nfe) {
-                LOGGER.debug("Invalid port number for host {}", hostPort[1]);
-            }
-        }
-
+    private void handleTransparentProxyConnection(ChannelHandlerContext ctx, FullHttpRequest request) {
+        Address address = Address.resolve(request.headers().get(HttpHeaderNames.HOST), HTTP_PORT);
         FullHttpRequest newRequest = request.copy();
-        Address address = new Address(host, port);
-
         connectionContext.connect(address, ctx).addListener((ChannelFuture future) -> {
             if (future.isSuccess()) {
                 LOGGER.debug("{} : {}", connectionContext, newRequest);
@@ -165,7 +151,6 @@ public class Http1FrontendHandler extends SimpleChannelInboundHandler<FullHttpRe
                 ctx.channel().close();
             }
         });
-
         connectionContext.tlsCtx().disableTls();
         connectionContext.tlsCtx().protocolPromise().setSuccess(Protocols.HTTP_1);
     }
