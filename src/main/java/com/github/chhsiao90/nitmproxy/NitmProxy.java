@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 
+import static com.github.chhsiao90.nitmproxy.tls.CertUtil.*;
+
 public class NitmProxy {
     private static final Logger LOGGER = LoggerFactory.getLogger(NitmProxy.class);
 
@@ -143,14 +145,14 @@ public class NitmProxy {
             if (!new File(certFile).exists()) {
                 throw new IllegalArgumentException("No cert file found: " + certFile);
             }
-            config.setCertFile(certFile);
+            config.setCertificate(readPemFromFile(certFile));
         }
         if (commandLine.hasOption("key")) {
             String certKey = commandLine.getOptionValue("key");
             if (!new File(certKey).exists()) {
                 throw new IllegalArgumentException("No key found: " + certKey);
             }
-            config.setKeyFile(certKey);
+            config.setKey(readPrivateKeyFromFile(certKey));
         }
         if (commandLine.hasOption("k")) {
             config.setInsecure(true);

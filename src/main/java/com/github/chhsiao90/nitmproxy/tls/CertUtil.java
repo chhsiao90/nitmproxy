@@ -1,5 +1,6 @@
 package com.github.chhsiao90.nitmproxy.tls;
 
+import com.github.chhsiao90.nitmproxy.exception.NitmProxyException;
 import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -55,14 +56,13 @@ public class CertUtil {
     private CertUtil() {
     }
 
-    public static Certificate newCert(String parentCertFile, String keyFile, String host) {
+    public static Certificate newCert(X509CertificateHolder parent, PrivateKeyInfo key, String host) {
         try {
             //need a date before today to adjust for other time zones
             Date before = Date.from(
                     Instant.now()
                     .atZone(ZoneId.systemDefault())
                     .minusMonths(6).toInstant());
-
             Date after = Date.from(
                     Year.now()
                         .plus(1, ChronoUnit.YEARS)
@@ -71,10 +71,8 @@ public class CertUtil {
                         .toInstant());
 
             JcaPEMKeyConverter converter = new JcaPEMKeyConverter().setProvider(PROVIDER);
-            X509CertificateHolder parent = readPemFromFile(parentCertFile);
             PublicKey publicKey = converter.getPublicKey(parent.getSubjectPublicKeyInfo());
-            PrivateKey privateKey = converter.getPrivateKey(getPrivateKey(keyFile));
-
+            PrivateKey privateKey = converter.getPrivateKey(key);
             X509v3CertificateBuilder x509 = new JcaX509v3CertificateBuilder(
                     parent.getSubject(),
                     new BigInteger(64, new SecureRandom()),
@@ -113,22 +111,26 @@ public class CertUtil {
      * @param pemFile the pem file
      * @param <T> the type of the pem
      * @return the parsed pem
-     * @throws IOException if there is any exception while reading the pem file
+     * @throws NitmProxyException if there is any exception while reading the pem file
      */
     @SuppressWarnings({ "UnstableApiUsage", "unchecked" })
-    public static <T> T readPemFromFile(String pemFile) throws IOException {
+    public static <T> T readPemFromFile(String pemFile) {
         try (PEMParser pemParser = new PEMParser(newReader(new File(pemFile), US_ASCII))) {
             return (T) pemParser.readObject();
+        } catch (IOException e) {
+            throw new NitmProxyException("Parse pem failed: " + pemFile, e);
         }
     }
 
     @SuppressWarnings("deprecation")
-    public static byte[] toPem(Object object) throws IOException {
+    public static byte[] toPem(Object object) {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try (PEMWriter writer = new PEMWriter(new OutputStreamWriter(outputStream))) {
             writer.writeObject(object);
             writer.flush();
             return outputStream.toByteArray();
+        } catch (IOException e) {
+            throw new NitmProxyException("Transform to pem failed: " + object, e);
         }
     }
 
@@ -144,14 +146,14 @@ public class CertUtil {
         }
     }
 
-    private static PrivateKeyInfo getPrivateKey(String pemFile) throws IOException {
+    public static PrivateKeyInfo readPrivateKeyFromFile(String pemFile) {
         Object object = readPemFromFile(pemFile);
         if (object instanceof PEMKeyPair) {
             return ((PEMKeyPair) object).getPrivateKeyInfo();
         } else if (object instanceof PrivateKeyInfo) {
             return (PrivateKeyInfo) object;
         }
-        throw new IOException("Not a valid private key: " + pemFile);
+        throw new NitmProxyException("Not a valid private key: " + pemFile);
     }
 
     /**

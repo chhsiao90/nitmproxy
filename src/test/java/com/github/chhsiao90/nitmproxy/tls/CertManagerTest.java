@@ -5,6 +5,7 @@ import com.google.common.io.Resources;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.github.chhsiao90.nitmproxy.tls.CertUtil.*;
 import static org.junit.Assert.*;
 
 public class CertManagerTest {
@@ -13,8 +14,8 @@ public class CertManagerTest {
     @Before
     public void setUp() {
         NitmProxyConfig config = new NitmProxyConfig();
-        config.setCertFile(Resources.getResource("server.pem").getFile());
-        config.setKeyFile(Resources.getResource("key.pem").getFile());
+        config.setCertificate(readPemFromFile(Resources.getResource("server.pem").getFile()));
+        config.setKey(readPrivateKeyFromFile(Resources.getResource("key.pem").getFile()));
         certManager = new CertManager(config);
     }
 

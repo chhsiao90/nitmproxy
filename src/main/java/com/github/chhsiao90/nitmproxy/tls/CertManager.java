@@ -5,23 +5,27 @@ import com.github.chhsiao90.nitmproxy.exception.NitmProxyException;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.cert.X509CertificateHolder;
 
-import java.io.File;
+import java.security.PrivateKey;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+
+import static com.google.common.base.Preconditions.*;
 
 public class CertManager {
 
     private static final int CERT_CACHE_SIZE = 2000;
 
-    private final String certFile;
-    private final String keyFile;
+    private final X509CertificateHolder certificate;
+    private final PrivateKeyInfo key;
 
     private LoadingCache<String, Certificate> certsCache;
 
     public CertManager(NitmProxyConfig config) {
-        this.certFile = new File(config.getCertFile()).getAbsolutePath();
-        this.keyFile = new File(config.getKeyFile()).getAbsolutePath();
+        this.certificate = checkNotNull(config.getCertificate(), "certificate");
+        this.key = checkNotNull(config.getKey(), "key");
         this.certsCache = CacheBuilder
                 .newBuilder()
                 .expireAfterWrite(1, TimeUnit.DAYS)
@@ -43,6 +47,6 @@ public class CertManager {
     }
 
     private Certificate createCert(String host) {
-        return CertUtil.newCert(certFile, keyFile, host);
+        return CertUtil.newCert(certificate, key, host);
     }
 }

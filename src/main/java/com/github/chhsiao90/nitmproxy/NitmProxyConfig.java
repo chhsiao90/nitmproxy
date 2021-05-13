@@ -5,6 +5,8 @@ import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolDetector;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1ProtocolDetector;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.google.common.base.Joiner;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.cert.X509CertificateHolder;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManager;
@@ -25,8 +27,8 @@ public class NitmProxyConfig {
     private int port;
 
     // TLS related
-    private String certFile;
-    private String keyFile;
+    private X509CertificateHolder certificate;
+    private PrivateKeyInfo key;
     private boolean insecure;
     private Provider sslProvider;
     private List<String> tlsProtocols;
@@ -46,8 +48,6 @@ public class NitmProxyConfig {
         host = "127.0.0.1";
         port = 8080;
 
-        certFile = "server.pem";
-        keyFile = "key.pem";
         insecure = false;
         tlsProtocols = asList("TLSv1.3", "TLSv1.2");
 
@@ -81,20 +81,20 @@ public class NitmProxyConfig {
         this.port = port;
     }
 
-    public String getCertFile() {
-        return certFile;
+    public X509CertificateHolder getCertificate() {
+        return certificate;
     }
 
-    public void setCertFile(String certFile) {
-        this.certFile = certFile;
+    public void setCertificate(X509CertificateHolder certificate) {
+        this.certificate = certificate;
     }
 
-    public String getKeyFile() {
-        return keyFile;
+    public PrivateKeyInfo getKey() {
+        return key;
     }
 
-    public void setKeyFile(String keyFile) {
-        this.keyFile = keyFile;
+    public void setKey(PrivateKeyInfo key) {
+        this.key = key;
     }
 
     public boolean isInsecure() {
@@ -167,8 +167,6 @@ public class NitmProxyConfig {
                 format("proxyMode=%s", proxyMode),
                 format("host=%s", host),
                 format("port=%s", port),
-                format("certFile=%s", certFile),
-                format("keyFile=%s", keyFile),
                 format("insecure=%b", insecure),
                 format("tlsProtocols=%s", tlsProtocols),
                 format("sslProvider=%s", sslProvider),
