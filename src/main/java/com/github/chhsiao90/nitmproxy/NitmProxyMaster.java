@@ -1,6 +1,7 @@
 package com.github.chhsiao90.nitmproxy;
 
 import com.github.chhsiao90.nitmproxy.channel.BackendChannelBootstrap;
+import com.github.chhsiao90.nitmproxy.listener.ForwardListener;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerManager;
 import com.github.chhsiao90.nitmproxy.tls.CertManager;
@@ -19,7 +20,8 @@ public class NitmProxyMaster {
                            BackendChannelBootstrap backendChannelBootstrap) {
         this.config = config;
         this.backendChannelBootstrap = backendChannelBootstrap;
-        this.nitmProxyListenerManager = new NitmProxyListenerManager(config.getHttpListeners());
+        this.nitmProxyListenerManager = new NitmProxyListenerManager(
+                config.getHttpListeners(), config.getForwardListeners());
         this.certManager = new CertManager(config);
     }
 
@@ -32,6 +34,10 @@ public class NitmProxyMaster {
     }
 
     public HttpListener httpEventListener() {
+        return nitmProxyListenerManager;
+    }
+
+    public ForwardListener forwardEventListener() {
         return nitmProxyListenerManager;
     }
 

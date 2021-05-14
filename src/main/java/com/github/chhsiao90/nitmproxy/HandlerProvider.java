@@ -2,6 +2,7 @@ package com.github.chhsiao90.nitmproxy;
 
 import com.github.chhsiao90.nitmproxy.exception.NitmProxyException;
 import com.github.chhsiao90.nitmproxy.handler.ForwardBackendHandler;
+import com.github.chhsiao90.nitmproxy.handler.ForwardEventHandler;
 import com.github.chhsiao90.nitmproxy.handler.ForwardFrontendHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolSelectHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1BackendHandler;
@@ -90,5 +91,9 @@ public class HandlerProvider {
 
     public ChannelHandler forwardBackendHandler() {
         return new ForwardBackendHandler(context);
+    }
+
+    public ChannelHandler forwardEventHandler() {
+        return new ForwardEventHandler(master, context);
     }
 }
