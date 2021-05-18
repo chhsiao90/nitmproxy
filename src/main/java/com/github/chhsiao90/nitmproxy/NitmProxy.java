@@ -34,9 +34,10 @@ public class NitmProxy {
     }
 
     public void start() throws Exception {
+        config.init();
+
         bossGroup = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup();
-
         try {
             ServerBootstrap bootstrap = new ServerBootstrap()
                     .group(bossGroup, workerGroup)

@@ -16,11 +16,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static com.github.chhsiao90.nitmproxy.tls.CertUtil.*;
 import static java.lang.String.*;
 import static java.lang.System.*;
 import static java.util.Arrays.*;
 
 public class NitmProxyConfig {
+
+    private static final String DEFAULT_CERT = "server.pem";
+    private static final String DEFAULT_KEY = "key.pem";
 
     private ProxyMode proxyMode;
 
@@ -58,6 +62,15 @@ public class NitmProxyConfig {
         httpListeners = new ArrayList<>();
         forwardListeners = new ArrayList<>();
         detectors = Collections.singletonList(Http1ProtocolDetector.INSTANCE);
+    }
+
+    public void init() {
+        if (certificate == null) {
+            certificate = readPemFromFile(DEFAULT_CERT);
+        }
+        if (key == null) {
+            key = readPrivateKeyFromFile(DEFAULT_KEY);
+        }
     }
 
     public ProxyMode getProxyMode() {
