@@ -34,6 +34,7 @@ public class NitmProxyConfig {
 
     private int maxContentLength;
 
+    private NitmProxyStatusListener statusListener;
     private List<HttpListener> httpListeners;
     private TrustManager trustManager;
 
@@ -159,6 +160,14 @@ public class NitmProxyConfig {
 
     public void setDetectors(List<ProtocolDetector> detectors) {
         this.detectors = detectors;
+    }
+
+    public NitmProxyStatusListener getStatusListener() {
+        return statusListener;
+    }
+
+    public void setStatusListener(NitmProxyStatusListener statusListener) {
+        this.statusListener = statusListener;
     }
 
     @Override
