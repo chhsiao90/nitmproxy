@@ -28,7 +28,7 @@ public class NitmProxy {
 
     private NioEventLoopGroup bossGroup;
     private NioEventLoopGroup workerGroup;
-
+    private NitmProxyStatus status = NitmProxyStatus.NOTCONFIGURED;
     public NitmProxy(NitmProxyConfig config) {
         this.config = config;
     }
@@ -52,10 +52,17 @@ public class NitmProxy {
             LOGGER.info("nitmproxy is listening at {}:{}",
                               config.getHost(), config.getPort());
 
+            status = NitmProxyStatus.STARTED;
+
+            if (config.getStatusListener() != null) {
+                config.getStatusListener().onStart();
+            }
+
             channel.closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
+            status = NitmProxyStatus.STOPPED;
         }
     }
 
@@ -66,6 +73,16 @@ public class NitmProxy {
         if (workerGroup != null) {
             workerGroup.shutdownGracefully();
         }
+
+        status = NitmProxyStatus.STOPPED;
+
+        if (config.getStatusListener() != null) {
+            config.getStatusListener().onStop();
+        }
+    }
+
+    public NitmProxyStatus getStatus() {
+        return status;
     }
 
     public static void main(String[] args) throws Exception {
