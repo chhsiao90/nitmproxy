@@ -1,6 +1,7 @@
 package com.github.chhsiao90.nitmproxy;
 
 public interface NitmProxyStatusListener {
+
     default void onStart() {
 
     }
@@ -8,4 +9,5 @@ public interface NitmProxyStatusListener {
     default void onStop() {
 
     }
+
 }
