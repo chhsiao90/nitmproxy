@@ -1,8 +1,9 @@
 package com.github.chhsiao90.nitmproxy.http;
 
+import com.google.common.base.Joiner;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.channel.ChannelHandlerContext;
+import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -14,7 +15,12 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.AsciiString;
 
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import static com.google.common.net.HttpHeaders.*;
+import static io.netty.buffer.Unpooled.*;
 import static io.netty.handler.codec.http.HttpHeaderValues.*;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static java.lang.String.*;
@@ -29,6 +35,10 @@ public class HttpUtil {
     private HttpUtil() {
     }
 
+    public static FullHttpRequest defaultRequest() {
+        return request(HttpVersion.HTTP_1_1, HttpMethod.GET, "localhost", "/");
+    }
+
     /**
      * Create a http request.
      *
@@ -38,7 +48,7 @@ public class HttpUtil {
      * @param url     the url
      * @return the http request
      */
-    public static HttpRequest request(HttpVersion version, HttpMethod method, String host,
+    public static FullHttpRequest request(HttpVersion version, HttpMethod method, String host,
             String url) {
         FullHttpRequest request = new DefaultFullHttpRequest(version, method, url);
         request.headers().set(HOST, host);
@@ -46,32 +56,22 @@ public class HttpUtil {
     }
 
     /**
-     * Encode the request into a buffer.
+     * Create a text request.
      *
-     * @param buffer  the buffer
-     * @param request the request
+     * @param version the http version
+     * @param method  the http method
+     * @param host    the host
+     * @param url     the url
+     * @return the http request
      */
-    public static void write(ByteBuf buffer, HttpRequest request) {
-        buffer.writeCharSequence(
-                format("%s %s %s\r\n", request.method(), request.uri(), request.protocolVersion()),
-                UTF_8);
-        write(buffer, request.headers());
-        buffer.writeCharSequence("\r\n", US_ASCII);
-    }
-
-    /**
-     * Encode the headers into a buffer.
-     *
-     * @param buffer  the buffer
-     * @param headers the headers
-     */
-    public static void write(ByteBuf buffer, HttpHeaders headers) {
-        if (headers.isEmpty()) {
-            return;
-        }
-        headers.entries().stream()
-               .map(entry -> format("%s: %s\r\n", entry.getKey(), entry.getValue()))
-               .forEach(line -> buffer.writeCharSequence(line, UTF_8));
+    public static FullHttpRequest textRequest(HttpVersion version, HttpMethod method, String host,
+            String url, String body) {
+        FullHttpRequest request = new DefaultFullHttpRequest(version, method, url, copiedBuffer(body, UTF_8));
+        request.headers()
+               .set(HOST, host)
+               .set(CONTENT_LENGTH, request.content().readableBytes())
+               .set(CONTENT_TYPE, TEXT_PLAIN);
+        return request;
     }
 
     /**
@@ -83,7 +83,7 @@ public class HttpUtil {
      * @param url     the url
      * @return the http request
      */
-    public static HttpRequest jsonRequest(HttpVersion version, HttpMethod method, String host,
+    public static FullHttpRequest jsonRequest(HttpVersion version, HttpMethod method, String host,
             String url, String json) {
         FullHttpRequest request = new DefaultFullHttpRequest(version, method, url);
         byte[] bodyBytes = json.getBytes(UTF_8);
@@ -95,17 +95,24 @@ public class HttpUtil {
         return request;
     }
 
+    public static FullHttpResponse defaultResponse(String content) {
+        FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, OK, copiedBuffer(content, UTF_8));
+        response.headers().add(CONTENT_TYPE, "text/plain");
+        response.headers().add(CONTENT_LENGTH, response.content().readableBytes());
+        return response;
+    }
+
     /**
      * Create a json response.
      *
-     * @param ctx     the channel handler context
+     * @param alloc   the allocator
      * @param version the http version
      * @param json    the json
      * @return the response
      */
     public static FullHttpResponse jsonResponse(
-            ChannelHandlerContext ctx, HttpVersion version, String json) {
-        return response(ctx.alloc(), OK, version, APPLICATION_JSON, json);
+            ByteBufAllocator alloc, HttpVersion version, String json) {
+        return response(alloc, OK, version, APPLICATION_JSON, json);
     }
 
     /**
@@ -154,5 +161,54 @@ public class HttpUtil {
                 .set(CONTENT_LENGTH, bodyBytes.length);
         response.content().writeBytes(bodyBytes);
         return response;
+    }
+
+    public static ByteBuf toBytes(FullHttpRequest request) {
+        String req = String.format("%s %s %s\r\n%s\r\n",
+                request.method(),
+                request.uri(),
+                request.protocolVersion(),
+                toString(request.headers()));
+        return Unpooled.buffer().writeBytes(req.getBytes());
+    }
+
+    /**
+     * Encode the request into a buffer.
+     *
+     * @param buffer  the buffer
+     * @param request the request
+     */
+    public static void write(ByteBuf buffer, HttpRequest request) {
+        buffer.writeCharSequence(
+                format("%s %s %s\r\n", request.method(), request.uri(), request.protocolVersion()),
+                UTF_8);
+        write(buffer, request.headers());
+        buffer.writeCharSequence("\r\n", US_ASCII);
+    }
+
+    public static String toString(HttpHeaders headers) {
+        if (headers.isEmpty()) {
+            return "";
+        }
+
+        List<String> headerStrings = headers.entries().stream()
+                                            .map(entry -> String.format("%s: %s", entry.getKey(), entry.getValue()))
+                                            .collect(Collectors.toList());
+        return Joiner.on("\r\n").join(headerStrings) + "\r\n";
+    }
+
+    /**
+     * Encode the headers into a buffer.
+     *
+     * @param buffer  the buffer
+     * @param headers the headers
+     */
+    public static void write(ByteBuf buffer, HttpHeaders headers) {
+        if (headers.isEmpty()) {
+            return;
+        }
+        headers.entries().stream()
+               .map(entry -> format("%s: %s\r\n", entry.getKey(), entry.getValue()))
+               .forEach(line -> buffer.writeCharSequence(line, UTF_8));
     }
 }

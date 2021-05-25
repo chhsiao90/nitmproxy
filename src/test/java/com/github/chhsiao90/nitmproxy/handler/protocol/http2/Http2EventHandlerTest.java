@@ -1,4 +1,4 @@
-package com.github.chhsiao90.nitmproxy.handler.protocol.http1;
+package com.github.chhsiao90.nitmproxy.handler.protocol.http2;
 
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
@@ -6,33 +6,29 @@ import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.handler.codec.http.DefaultHttpContent;
-import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.DefaultLastHttpContent;
-import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpVersion;
+import io.netty.util.ReferenceCountUtil;
 import org.assertj.core.data.Offset;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.util.List;
 import java.util.Optional;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpUtil.*;
 import static com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert.*;
-import static com.google.common.net.HttpHeaders.*;
-import static io.netty.buffer.Unpooled.*;
 import static io.netty.handler.codec.http.HttpHeaderValues.*;
 import static io.netty.handler.codec.http.HttpMethod.*;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
-import static io.netty.handler.codec.http.HttpVersion.*;
 import static java.lang.System.*;
-import static java.nio.charset.StandardCharsets.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
-public class Http1EventHandlerTest {
+public class Http2EventHandlerTest {
+
     private HttpListener listener;
     private EmbeddedChannel channel;
 
@@ -45,7 +41,7 @@ public class Http1EventHandlerTest {
         ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(new Address("localhost", 8080))
                 .withClientChannel(channel);
-        Http1EventHandler handler = new Http1EventHandler(master, context);
+        Http2EventHandler handler = new Http2EventHandler(master, context);
         channel = new EmbeddedChannel(handler);
     }
 
@@ -55,41 +51,39 @@ public class Http1EventHandlerTest {
     }
 
     @Test
-    public void shouldLogWithFullResponse() {
-        when(listener.onHttp1Request(any())).thenReturn(Optional.empty());
-
-        assertTrue(channel.writeInbound(defaultRequest()));
-        assertTrue(channel.writeOutbound(defaultResponse("Hello Nitmproxy")));
-
-        ArgumentCaptor<HttpEvent> captor = ArgumentCaptor.forClass(HttpEvent.class);
-        verify(listener).onHttpEvent(captor.capture());
-        HttpEvent event = captor.getValue();
-        assertEquals(new Address("localhost", 8080), event.getClient());
-        assertThat(event.getServer()).isNull();
-        assertEquals(GET, event.getMethod());
-        assertEquals(HTTP_1_1, event.getVersion());
-        assertEquals("localhost", event.getHost());
-        assertEquals("/", event.getPath());
-        assertEquals(0, event.getRequestBodySize());
-        assertThat(event.getRequestTime()).isCloseTo(currentTimeMillis(), Offset.offset(100L));
-        assertEquals(OK, event.getStatus());
-        assertEquals(TEXT_PLAIN.toString(), event.getContentType());
-        assertThat(event.getResponseTime()).isGreaterThanOrEqualTo(0);
-        assertEquals(15, event.getResponseBodySize());
+    public void shouldSendRequestAfterRequestEnded() {
+        when(listener.onHttp2Request(any())).thenReturn(Optional.empty());
+        List<Http2FrameWrapper<?>> requestFrames = Http2FramesWrapper
+                .builder(1)
+                .request(textRequest(HttpVersion.HTTP_1_1, POST, "localhost", "/", "Hello nitmproxy"))
+                .build()
+                .getAllFrames();
+        assertFalse(channel.writeInbound(requestFrames.get(0)));
+        assertTrue(channel.writeInbound(requestFrames.get(1)));
+        assertChannel(channel)
+                .hasInboundMessage()
+                .hasSize(2);
+        assertThat(channel.inboundMessages().poll()).isEqualTo(requestFrames.get(0));
+        assertThat(channel.inboundMessages().poll()).isEqualTo(requestFrames.get(1));
+        requestFrames.forEach(ReferenceCountUtil::release);
     }
 
     @Test
-    public void shouldLogWithResponseAndContent() {
-        when(listener.onHttp1Request(any())).thenReturn(Optional.empty());
+    public void shouldLogWithFullResponse() {
+        when(listener.onHttp2Request(any())).thenReturn(Optional.empty());
 
-        HttpResponse response = new DefaultHttpResponse(HTTP_1_1, OK);
-        response.headers()
-                .add(CONTENT_TYPE, "text/plain")
-                .add(CONTENT_LENGTH, 15);
-        assertTrue(channel.writeInbound(defaultRequest()));
-        assertTrue(channel.writeOutbound(response,
-                new DefaultHttpContent(copiedBuffer("Hello ".getBytes(UTF_8))),
-                new DefaultLastHttpContent(copiedBuffer("Nitmproxy".getBytes(UTF_8)))));
+        Http2FramesWrapper
+                .builder(1)
+                .request(defaultRequest())
+                .build()
+                .getAllFrames()
+                .forEach(channel::writeInbound);
+        Http2FramesWrapper
+                .builder(1)
+                .response(defaultResponse("Hello nitmproxy"))
+                .build()
+                .getAllFrames()
+                .forEach(channel::writeOutbound);
 
         ArgumentCaptor<HttpEvent> captor = ArgumentCaptor.forClass(HttpEvent.class);
         verify(listener).onHttpEvent(captor.capture());
@@ -97,7 +91,7 @@ public class Http1EventHandlerTest {
         assertEquals(new Address("localhost", 8080), event.getClient());
         assertThat(event.getServer()).isNull();
         assertEquals(GET, event.getMethod());
-        assertEquals(HTTP_1_1, event.getVersion());
+        assertEquals(HTTP_2, event.getVersion());
         assertEquals("localhost", event.getHost());
         assertEquals("/", event.getPath());
         assertEquals(0, event.getRequestBodySize());
@@ -110,13 +104,18 @@ public class Http1EventHandlerTest {
 
     @Test
     public void shouldInterceptWithResponse() {
-        when(listener.onHttp1Request(any())).thenReturn(Optional.of(defaultResponse("Hello Nitmproxy")));
+        when(listener.onHttp2Request(any())).thenReturn(Optional.of(Http2FramesWrapper
+                .builder(1)
+                .response(defaultResponse("Hello nitmproxy"))
+                .build()));
+        Http2FramesWrapper
+                .builder(1)
+                .request(defaultRequest())
+                .build()
+                .getAllFrames()
+                .forEach(channel::writeInbound);
 
-        assertFalse(channel.writeInbound(defaultRequest()));
-        assertChannel(channel)
-                .hasOutboundMessage()
-                .hasResponse()
-                .isEqualTo(defaultResponse("Hello Nitmproxy"));
+        assertChannel(channel).hasOutboundMessage().hasSize(2);
 
         ArgumentCaptor<HttpEvent> captor = ArgumentCaptor.forClass(HttpEvent.class);
         verify(listener).onHttpEvent(captor.capture());
@@ -124,7 +123,7 @@ public class Http1EventHandlerTest {
         assertEquals(new Address("localhost", 8080), event.getClient());
         assertThat(event.getServer()).isNull();
         assertEquals(GET, event.getMethod());
-        assertEquals(HTTP_1_1, event.getVersion());
+        assertEquals(HTTP_2, event.getVersion());
         assertEquals("localhost", event.getHost());
         assertEquals("/", event.getPath());
         assertEquals(0, event.getRequestBodySize());
@@ -134,5 +133,4 @@ public class Http1EventHandlerTest {
         assertThat(event.getResponseTime()).isGreaterThanOrEqualTo(0);
         assertEquals(15, event.getResponseBodySize());
     }
-
 }

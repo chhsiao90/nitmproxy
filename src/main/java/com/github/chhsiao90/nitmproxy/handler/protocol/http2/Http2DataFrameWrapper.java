@@ -2,13 +2,13 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.http2;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
-import io.netty.handler.codec.http2.DefaultHttp2DataFrame;
+import io.netty.handler.codec.http2.Http2DataFrame;
 
 public class Http2DataFrameWrapper
-        extends Http2FrameWrapper<DefaultHttp2DataFrame>
+        extends Http2FrameWrapper<Http2DataFrame>
         implements ByteBufHolder {
 
-    public Http2DataFrameWrapper(int streamId, DefaultHttp2DataFrame frame) {
+    public Http2DataFrameWrapper(int streamId, Http2DataFrame frame) {
         super(streamId, frame);
     }
 

@@ -3,6 +3,7 @@ package com.github.chhsiao90.nitmproxy.listener;
 import com.github.chhsiao90.nitmproxy.event.ForwardEvent;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper;
+import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FramesWrapper;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
@@ -52,8 +53,12 @@ public class NitmProxyListenerManager implements HttpListener, ForwardListener {
     }
 
     @Override
-    public void onHttp2RequestFrame(Http2FrameWrapper<?> frame) {
-        httpListeners.forEach(listener -> listener.onHttp2RequestFrame(frame));
+    public Optional<Http2FramesWrapper> onHttp2Request(Http2FramesWrapper request) {
+        Function<HttpListener, Stream<Http2FramesWrapper>> apply = listener -> listener
+                .onHttp2Request(request)
+                .map(Stream::of)
+                .orElse(Stream.empty());
+        return httpListeners.stream().flatMap(apply).findFirst();
     }
 
     @Override

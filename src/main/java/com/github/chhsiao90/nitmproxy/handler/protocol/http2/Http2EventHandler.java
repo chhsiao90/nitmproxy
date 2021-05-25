@@ -13,8 +13,12 @@ import io.netty.handler.codec.http2.Http2DataFrame;
 import io.netty.handler.codec.http2.Http2Frame;
 import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2HeadersFrame;
+import io.netty.util.ReferenceCountUtil;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpHeadersUtil.*;
@@ -46,15 +50,12 @@ public class Http2EventHandler extends ChannelDuplexHandler {
         if (msg instanceof Http2FrameWrapper) {
             Http2FrameWrapper<?> frameWrapper = (Http2FrameWrapper<?>) msg;
             listener.onHttp2ResponseFrame(frameWrapper);
-            FrameCollector frameCollector = streams.computeIfAbsent(
-                    frameWrapper.streamId(), ignored -> new FrameCollector());
+            FrameCollector frameCollector = streams.computeIfAbsent(frameWrapper.streamId(), this::newFrameCollector);
             if (frameCollector.onResponseFrame(frameWrapper.frame())) {
-                HttpEvent event = frameCollector.collect();
                 try {
-                    if (event != null) {
-                        listener.onHttpEvent(event);
-                    }
+                    frameCollector.collect().ifPresent(listener::onHttpEvent);
                 } finally {
+                    frameCollector.release();
                     streams.remove(frameWrapper.streamId());
                 }
             }
@@ -63,41 +64,95 @@ public class Http2EventHandler extends ChannelDuplexHandler {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        if (msg instanceof Http2FrameWrapper) {
-            Http2FrameWrapper<?> frameWrapper = (Http2FrameWrapper<?>) msg;
-            listener.onHttp2RequestFrame(frameWrapper);
-            FrameCollector frameCollector = streams.computeIfAbsent(
-                    frameWrapper.streamId(), ignored -> new FrameCollector());
-            frameCollector.onRequestFrame(frameWrapper.frame());
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
+        if (!(msg instanceof Http2FrameWrapper)) {
+            ctx.fireChannelRead(msg);
+            return;
         }
-        super.channelRead(ctx, msg);
+
+        Http2FrameWrapper<?> frameWrapper = (Http2FrameWrapper<?>) msg;
+        FrameCollector frameCollector = streams.computeIfAbsent(frameWrapper.streamId(), this::newFrameCollector);
+        Optional<Http2FramesWrapper> fullRequest = frameCollector.onRequestFrame(frameWrapper.frame());
+        if (!fullRequest.isPresent()) {
+            return;
+        }
+
+        Optional<Http2FramesWrapper> response = listener.onHttp2Request(fullRequest.get());
+        if (!response.isPresent()) {
+            fullRequest.get().getAllFrames().forEach(ctx::fireChannelRead);
+            return;
+        }
+
+        try {
+            List<Http2FrameWrapper<?>> frames = response.get().getAllFrames();
+            frames.stream()
+                    .map(frame -> frame.frame())
+                    .forEach(frameCollector::onResponseFrame);
+            frameCollector.collect().ifPresent(listener::onHttpEvent);
+            frames.forEach(ctx::write);
+            ctx.flush();
+        } finally {
+            frameCollector.release();
+            streams.remove(frameWrapper.streamId());
+        }
     }
 
-    private class FrameCollector {
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        streams.values().forEach(FrameCollector::release);
+        ctx.fireChannelInactive();
+    }
 
+    private FrameCollector newFrameCollector(int streamId) {
+        return new FrameCollector(streamId, HttpEvent.builder(connectionContext));
+    }
+
+    private static class FrameCollector {
+
+        private int streamId;
         private HttpEvent.Builder httpEventBuilder;
+        private Http2HeadersFrame requestHeader;
+        private List<Http2DataFrame> requestData = new ArrayList<>();
         private boolean requestDone;
 
-        public FrameCollector() {
-            httpEventBuilder = HttpEvent.builder(connectionContext);
+        public FrameCollector(int streamId, HttpEvent.Builder httpEventBuilder) {
+            this.streamId = streamId;
+            this.httpEventBuilder = httpEventBuilder;
         }
 
-        public void onRequestFrame(Http2Frame frame) {
+        /**
+         * Handles a http2 frame of the request, and return full request frames while the request was ended.
+         *
+         * @param frame a http2 frame
+         * @return full request frames if the request was ended, return empty if there are more frames of the request
+         */
+        public Optional<Http2FramesWrapper> onRequestFrame(Http2Frame frame) {
             if (frame instanceof Http2HeadersFrame) {
-                Http2HeadersFrame headersFrame = (Http2HeadersFrame) frame;
-                Http2Headers headers = headersFrame.headers();
+                requestHeader = (Http2HeadersFrame) frame;
+                Http2Headers headers = requestHeader.headers();
                 httpEventBuilder.method(HttpMethod.valueOf(headers.method().toString()))
                                 .version(HttpUtil.HTTP_2)
                                 .host(headers.authority().toString())
                                 .path(headers.path().toString())
                                 .requestTime(currentTimeMillis());
-                requestDone = headersFrame.isEndStream();
+                requestDone = requestHeader.isEndStream();
             } else if (frame instanceof Http2DataFrame) {
                 Http2DataFrame data = (Http2DataFrame) frame;
+                requestData.add(data);
                 httpEventBuilder.addRequestBodySize(data.content().readableBytes());
                 requestDone = data.isEndStream();
             }
+
+            if (requestDone) {
+                Http2FramesWrapper request = Http2FramesWrapper
+                        .builder(streamId)
+                        .headers(requestHeader)
+                        .data(requestData)
+                        .build();
+                requestData.clear();
+                return Optional.of(request);
+            }
+            return Optional.empty();
         }
 
         public boolean onResponseFrame(Http2Frame frame) {
@@ -116,11 +171,15 @@ public class Http2EventHandler extends ChannelDuplexHandler {
             return false;
         }
 
-        public HttpEvent collect() {
+        public Optional<HttpEvent> collect() {
             if (requestDone) {
-                return httpEventBuilder.build();
+                return Optional.of(httpEventBuilder.build());
             }
-            return null;
+            return Optional.empty();
+        }
+
+        public void release() {
+            requestData.forEach(ReferenceCountUtil::release);
         }
     }
 }
