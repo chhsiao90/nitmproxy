@@ -49,9 +49,15 @@ public class Http2EventHandler extends ChannelDuplexHandler {
             throws Exception {
         if (msg instanceof Http2FrameWrapper) {
             Http2FrameWrapper<?> frameWrapper = (Http2FrameWrapper<?>) msg;
-            listener.onHttp2ResponseFrame(frameWrapper);
             FrameCollector frameCollector = streams.computeIfAbsent(frameWrapper.streamId(), this::newFrameCollector);
-            if (frameCollector.onResponseFrame(frameWrapper.frame())) {
+            boolean streamEnded = false;
+            if (Http2FrameWrapper.isFrame(msg, Http2HeadersFrame.class)) {
+                streamEnded = frameCollector.onResponseHeadersFrame(frameWrapper.frame(Http2HeadersFrame.class));
+            }
+            if (Http2FrameWrapper.isFrame(msg, Http2DataFrame.class)) {
+                streamEnded = frameCollector.onResponseDataFrame(frameWrapper.frame(Http2DataFrame.class));
+            }
+            if (streamEnded) {
                 try {
                     frameCollector.collect().ifPresent(listener::onHttpEvent);
                 } finally {
@@ -77,19 +83,18 @@ public class Http2EventHandler extends ChannelDuplexHandler {
             return;
         }
 
-        Optional<Http2FramesWrapper> response = listener.onHttp2Request(fullRequest.get());
-        if (!response.isPresent()) {
+        Optional<Http2FramesWrapper> responseOptional = listener.onHttp2Request(fullRequest.get());
+        if (!responseOptional.isPresent()) {
             fullRequest.get().getAllFrames().forEach(ctx::fireChannelRead);
             return;
         }
 
         try {
-            List<Http2FrameWrapper<?>> frames = response.get().getAllFrames();
-            frames.stream()
-                    .map(frame -> frame.frame())
-                    .forEach(frameCollector::onResponseFrame);
+            Http2FramesWrapper response = responseOptional.get();
+            frameCollector.onResponseHeadersFrame(response.getHeaders());
+            response.getData().forEach(frameCollector::onResponseDataFrame);
             frameCollector.collect().ifPresent(listener::onHttpEvent);
-            frames.forEach(ctx::write);
+            response.getAllFrames().forEach(ctx::write);
             ctx.flush();
         } finally {
             frameCollector.release();
@@ -155,20 +160,17 @@ public class Http2EventHandler extends ChannelDuplexHandler {
             return Optional.empty();
         }
 
-        public boolean onResponseFrame(Http2Frame frame) {
-            if (frame instanceof Http2HeadersFrame) {
-                Http2HeadersFrame headersFrame = (Http2HeadersFrame) frame;
-                Http2Headers headers = headersFrame.headers();
-                httpEventBuilder.status(getStatus(headers))
-                                .contentType(getContentType(headers))
-                                .responseTime(currentTimeMillis());
-                return headersFrame.isEndStream();
-            } else if (frame instanceof Http2DataFrame) {
-                Http2DataFrame data = (Http2DataFrame) frame;
-                httpEventBuilder.addResponseBodySize(data.content().readableBytes());
-                return data.isEndStream();
-            }
-            return false;
+        public boolean onResponseHeadersFrame(Http2HeadersFrame frame) {
+            Http2Headers headers = frame.headers();
+            httpEventBuilder.status(getStatus(headers))
+                            .contentType(getContentType(headers))
+                            .responseTime(currentTimeMillis());
+            return frame.isEndStream();
+        }
+
+        public boolean onResponseDataFrame(Http2DataFrame frame) {
+            httpEventBuilder.addResponseBodySize(frame.content().readableBytes());
+            return frame.isEndStream();
         }
 
         public Optional<HttpEvent> collect() {

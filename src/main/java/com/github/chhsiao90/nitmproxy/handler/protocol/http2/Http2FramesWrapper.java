@@ -37,6 +37,14 @@ public class Http2FramesWrapper {
         return streamId;
     }
 
+    public Http2HeadersFrame getHeaders() {
+        return headersFrame;
+    }
+
+    public List<Http2DataFrame> getData() {
+        return dataFrames;
+    }
+
     public List<Http2FrameWrapper<?>> getAllFrames() {
         return ImmutableList.<Http2FrameWrapper<?>>builder()
                 .add(frameWrapper(streamId, headersFrame))

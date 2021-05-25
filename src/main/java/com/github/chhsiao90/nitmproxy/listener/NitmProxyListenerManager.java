@@ -2,6 +2,7 @@ package com.github.chhsiao90.nitmproxy.listener;
 
 import com.github.chhsiao90.nitmproxy.event.ForwardEvent;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
+import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2DataFrameWrapper;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FramesWrapper;
 import io.netty.buffer.ByteBuf;
@@ -9,6 +10,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http2.Http2HeadersFrame;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,8 +64,13 @@ public class NitmProxyListenerManager implements HttpListener, ForwardListener {
     }
 
     @Override
-    public void onHttp2ResponseFrame(Http2FrameWrapper<?> frame) {
-        httpListeners.forEach(listener -> listener.onHttp2ResponseFrame(frame));
+    public void onHttp2Response(Http2FrameWrapper<Http2HeadersFrame> frame) {
+        httpListeners.forEach(listener -> listener.onHttp2Response(frame));
+    }
+
+    @Override
+    public void onHttp2ResponseData(Http2DataFrameWrapper frame) {
+        httpListeners.forEach(listener -> listener.onHttp2ResponseData(frame));
     }
 
     @Override
