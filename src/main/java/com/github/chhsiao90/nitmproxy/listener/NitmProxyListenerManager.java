@@ -4,12 +4,16 @@ import com.github.chhsiao90.nitmproxy.event.ForwardEvent;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper;
 import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 public class NitmProxyListenerManager implements HttpListener, ForwardListener {
 
@@ -30,13 +34,11 @@ public class NitmProxyListenerManager implements HttpListener, ForwardListener {
     }
 
     @Override
-    public void onHttp1Request(HttpRequest request) {
-        httpListeners.forEach(listener -> listener.onHttp1Request(request));
-    }
-
-    @Override
-    public void onHttp1RequestData(HttpContent data) {
-        httpListeners.forEach(listener -> listener.onHttp1RequestData(data));
+    public Optional<FullHttpResponse> onHttp1Request(FullHttpRequest request) {
+        Function<HttpListener, Stream<FullHttpResponse>> apply = listener -> listener.onHttp1Request(request)
+                .map(Stream::of)
+                .orElse(Stream.empty());
+        return httpListeners.stream().flatMap(apply).findFirst();
     }
 
     @Override

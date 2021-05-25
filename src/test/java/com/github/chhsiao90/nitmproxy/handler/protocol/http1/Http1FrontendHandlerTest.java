@@ -10,7 +10,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
@@ -58,7 +58,7 @@ public class Http1FrontendHandlerTest {
         Http1FrontendHandler handler = tunneledHandler();
         inboundChannel.pipeline().addLast(handler);
 
-        assertFalse(inboundChannel.writeInbound(HttpObjectUtil.requestBytes()));
+        assertFalse(inboundChannel.writeInbound(HttpObjectUtil.fullRequestAsBytes()));
 
         assertEquals(1, outboundChannel.outboundMessages().size());
         assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
@@ -77,13 +77,13 @@ public class Http1FrontendHandlerTest {
         Http1FrontendHandler handler = tunneledHandler();
         inboundChannel.pipeline().addLast(handler);
 
-        assertFalse(inboundChannel.writeInbound(HttpObjectUtil.requestBytes()));
+        assertFalse(inboundChannel.writeInbound(HttpObjectUtil.fullRequestAsBytes()));
 
         assertEquals(1, outboundChannel.outboundMessages().size());
         assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
         release(outboundChannel.outboundMessages().poll());
 
-        assertFalse(inboundChannel.writeInbound(HttpObjectUtil.requestBytes()));
+        assertFalse(inboundChannel.writeInbound(HttpObjectUtil.fullRequestAsBytes()));
         assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
         release(outboundChannel.outboundMessages().poll());
     }
@@ -93,7 +93,7 @@ public class Http1FrontendHandlerTest {
         Http1FrontendHandler handler = httpProxyHandler(true);
         inboundChannel.pipeline().addLast(handler);
 
-        ByteBuf requestBytes = HttpObjectUtil.requestBytes(new DefaultHttpRequest(
+        ByteBuf requestBytes = HttpObjectUtil.fullRequestAsBytes(new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1, HttpMethod.GET, "http://localhost:9000/"));
         assertFalse(inboundChannel.writeInbound(requestBytes));
 
@@ -112,7 +112,7 @@ public class Http1FrontendHandlerTest {
         Http1FrontendHandler handler = httpProxyHandler(true);
         inboundChannel.pipeline().addLast(handler);
 
-        ByteBuf requestBytes = HttpObjectUtil.requestBytes(new DefaultHttpRequest(
+        ByteBuf requestBytes = HttpObjectUtil.fullRequestAsBytes(new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1, HttpMethod.GET, "http://localhost:9000/"));
         assertFalse(inboundChannel.writeInbound(requestBytes.copy()));
 
@@ -143,7 +143,7 @@ public class Http1FrontendHandlerTest {
         Http1FrontendHandler handler = httpProxyHandler(true);
         inboundChannel.pipeline().addLast(handler);
 
-        ByteBuf firstRequestBytes = HttpObjectUtil.requestBytes(new DefaultHttpRequest(
+        ByteBuf firstRequestBytes = HttpObjectUtil.fullRequestAsBytes(new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1, HttpMethod.GET, "http://localhost:8000/"));
         assertFalse(inboundChannel.writeInbound(firstRequestBytes));
 
@@ -159,7 +159,7 @@ public class Http1FrontendHandlerTest {
         EmbeddedChannel firstOutboundChannel = outboundChannel;
 
         // Second request
-        ByteBuf secondRequestBytes = HttpObjectUtil.requestBytes(new DefaultHttpRequest(
+        ByteBuf secondRequestBytes = HttpObjectUtil.fullRequestAsBytes(new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1, HttpMethod.GET, "http://localhost:9000/"));
         assertFalse(inboundChannel.writeInbound(secondRequestBytes));
 
@@ -181,7 +181,7 @@ public class Http1FrontendHandlerTest {
         Http1FrontendHandler handler = httpProxyHandler(false);
         inboundChannel.pipeline().addLast(handler);
 
-        ByteBuf firstRequestBytes = HttpObjectUtil.requestBytes(new DefaultHttpRequest(
+        ByteBuf firstRequestBytes = HttpObjectUtil.fullRequestAsBytes(new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1, HttpMethod.GET, "http://localhost:8000/"));
         assertFalse(inboundChannel.writeInbound(firstRequestBytes));
 
@@ -193,7 +193,7 @@ public class Http1FrontendHandlerTest {
         Http1FrontendHandler handler = httpProxyHandler(true);
         inboundChannel.pipeline().addLast(handler);
 
-        ByteBuf firstRequestBytes = HttpObjectUtil.requestBytes(new DefaultHttpRequest(
+        ByteBuf firstRequestBytes = HttpObjectUtil.fullRequestAsBytes(new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1, HttpMethod.GET, "http://localhost:8000/"));
         assertFalse(inboundChannel.writeInbound(firstRequestBytes));
 
@@ -210,7 +210,7 @@ public class Http1FrontendHandlerTest {
         outboundChannel.close();
 
         // Second request
-        ByteBuf secondRequestBytes = HttpObjectUtil.requestBytes(new DefaultHttpRequest(
+        ByteBuf secondRequestBytes = HttpObjectUtil.fullRequestAsBytes(new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1, HttpMethod.GET, "http://localhost:8000/"));
         assertFalse(inboundChannel.writeInbound(secondRequestBytes));
 
@@ -231,7 +231,7 @@ public class Http1FrontendHandlerTest {
         Http1FrontendHandler handler = httpProxyHandler(true);
         inboundChannel.pipeline().addLast(handler);
 
-        ByteBuf requestBytes = HttpObjectUtil.requestBytes(new DefaultHttpRequest(
+        ByteBuf requestBytes = HttpObjectUtil.fullRequestAsBytes(new DefaultFullHttpRequest(
                 HttpVersion.HTTP_1_1, HttpMethod.CONNECT, "localhost:8000"));
         assertFalse(inboundChannel.writeInbound(requestBytes));
 
