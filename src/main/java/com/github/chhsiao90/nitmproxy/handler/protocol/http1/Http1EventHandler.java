@@ -8,10 +8,12 @@ import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.LastHttpContent;
 
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpHeadersUtil.*;
@@ -91,15 +93,43 @@ public class Http1EventHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        if (msg instanceof FullHttpRequest) {
-            checkState(request == null, "request is not null");
-            checkState(response == null, "response is not null");
-            listener.onHttp1Request((FullHttpRequest) msg);
-            listener.onHttp1RequestData((FullHttpRequest) msg);
-            request = (FullHttpRequest) retain(msg);
-            requestTime = currentTimeMillis();
+        if (!(msg instanceof FullHttpRequest)) {
+            ctx.fireChannelRead(msg);
+            return;
         }
-        super.channelRead(ctx, msg);
+        checkState(request == null, "request is not null");
+        checkState(response == null, "response is not null");
+
+        FullHttpRequest request = (FullHttpRequest) msg;
+        Optional<FullHttpResponse> response =  listener.onHttp1Request((FullHttpRequest) msg);
+        if (response.isPresent()) {
+            try {
+                sendResponse(ctx, request, response.get());
+            } finally {
+                request.release();
+            }
+            return;
+        }
+
+        this.request = retain(request);
+        this.requestTime = currentTimeMillis();
+        ctx.fireChannelRead(msg);
+    }
+
+    private void sendResponse(ChannelHandlerContext ctx, FullHttpRequest request, FullHttpResponse response) {
+        HttpEvent httpEvent = HttpEvent.builder(connectionContext)
+                                       .method(request.method())
+                                       .version(request.protocolVersion())
+                                       .host(request.headers().get(HOST))
+                                       .path(request.uri())
+                                       .requestBodySize(request.content().readableBytes())
+                                       .requestTime(currentTimeMillis())
+                                       .status(response.status())
+                                       .contentType(getContentType(response.headers()))
+                                       .responseBodySize(response.content().readableBytes())
+                                       .build();
+        listener.onHttpEvent(httpEvent);
+        ctx.writeAndFlush(response);
     }
 
     @Override

@@ -2,7 +2,6 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.http2;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import io.netty.handler.codec.http2.DefaultHttp2DataFrame;
 import io.netty.handler.codec.http2.Http2ConnectionEncoder;
 import io.netty.handler.codec.http2.Http2DataFrame;
 import io.netty.handler.codec.http2.Http2Frame;
@@ -10,6 +9,8 @@ import io.netty.handler.codec.http2.Http2HeadersFrame;
 import io.netty.handler.codec.http2.Http2ResetFrame;
 import io.netty.handler.codec.http2.Http2SettingsFrame;
 import io.netty.handler.codec.http2.Http2WindowUpdateFrame;
+
+import java.util.Objects;
 
 public class Http2FrameWrapper<T extends Http2Frame> {
     protected int streamId;
@@ -20,7 +21,7 @@ public class Http2FrameWrapper<T extends Http2Frame> {
         this.frame = frame;
     }
 
-    public static Http2DataFrameWrapper frameWrapper(int streamId, DefaultHttp2DataFrame frame) {
+    public static Http2DataFrameWrapper frameWrapper(int streamId, Http2DataFrame frame) {
         return new Http2DataFrameWrapper(streamId, frame);
     }
 
@@ -106,10 +107,24 @@ public class Http2FrameWrapper<T extends Http2Frame> {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Http2FrameWrapper<?> that = (Http2FrameWrapper<?>) o;
+        return streamId == that.streamId && frame.equals(that.frame);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(streamId, frame);
+    }
+
+    @Override
     public String toString() {
-        return "Http2FrameWrapper{" +
-               "streamId=" + streamId +
-               ", frame=" + frame +
-               '}';
+        return streamId + ": " + frame;
     }
 }
