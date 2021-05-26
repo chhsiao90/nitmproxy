@@ -35,7 +35,7 @@ usage: nitmproxy [--cert <CERTIFICATE>] [--clientNoHttp2] [-h <HOST>] [-k]
 
 ### Support Functionality
 - Display network traffic
-- Modify network traffic (WIP)
+- Modify network traffic
 
 ## Development
 
@@ -59,15 +59,6 @@ https://search.maven.org/artifact/org.conscrypt/conscrypt-android
 config.setSslProvider(Conscrypt.newProvider());
 ```
 
-**Add conscrypt-android dependency**
-
-https://search.maven.org/artifact/org.conscrypt/conscrypt-android
-
-**Configure Conscrypt SSL provider**
-
-```java
-config.setSslProvider(Conscrypt.newProvider());
-```
 ### For a transparent proxy, how do I port forward HTTP/HTTPS requests?
 
 ### Linux
