@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import static io.netty.handler.ssl.ApplicationProtocolNames.*;
 import static java.lang.String.*;
 
 public class TlsBackendHandler extends ChannelDuplexHandler {
@@ -133,14 +134,25 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
         SslHandler sslHandler = sslHandler(ctx.alloc());
         ctx.pipeline()
             .addBefore(ctx.name(), null, sslHandler)
-            .addBefore(ctx.name(), null, new AlpnHandler(ctx));
+            .addBefore(ctx.name(), null, new AlpnHandler(ctx, getFallbackProtocol()));
+    }
+
+    private String getFallbackProtocol() {
+        if (connectionContext.tlsCtx().isNegotiated()) {
+            return connectionContext.tlsCtx().protocol();
+        }
+        if (connectionContext.tlsCtx().protocolsPromise().isSuccess()
+            && connectionContext.tlsCtx().protocols().contains(HTTP_1_1)) {
+            return HTTP_1_1;
+        }
+        return Protocols.FORWARD;
     }
 
     private class AlpnHandler extends ApplicationProtocolNegotiationHandler {
         private ChannelHandlerContext tlsCtx;
 
-        private AlpnHandler(ChannelHandlerContext tlsCtx) {
-            super(Protocols.FORWARD);
+        private AlpnHandler(ChannelHandlerContext tlsCtx, String fallbackProtocol) {
+            super(fallbackProtocol);
             this.tlsCtx = tlsCtx;
         }
 
