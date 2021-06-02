@@ -142,6 +142,7 @@ public class TlsBackendHandler extends ChannelDuplexHandler {
             return connectionContext.tlsCtx().protocol();
         }
         if (connectionContext.tlsCtx().protocolsPromise().isSuccess()
+            && connectionContext.tlsCtx().protocols() != null
             && connectionContext.tlsCtx().protocols().contains(HTTP_1_1)) {
             return HTTP_1_1;
         }
