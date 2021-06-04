@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
+import java.io.IOException;
 import java.util.List;
 
 import static io.netty.util.ReferenceCountUtil.*;
@@ -64,9 +65,17 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        LOGGER.error(format("%s : exceptionCaught with %s",
-                connectionContext, cause.getMessage()),
-                cause);
+        if (cause instanceof SSLException) {
+            LOGGER.error(format("%s : exceptionCaught with %s",
+                    connectionContext, cause.getMessage()),
+                    cause);
+        } else if (cause instanceof IOException) {
+            LOGGER.error("{} : exceptionCaught with {}", connectionContext, cause.getMessage());
+        } else {
+            LOGGER.error(format("%s : exceptionCaught with %s",
+                    connectionContext, cause.getMessage()),
+                    cause);
+        }
         ctx.close();
     }
 
