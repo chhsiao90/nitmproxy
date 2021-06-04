@@ -10,20 +10,16 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.ssl.AbstractSniHandler;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import io.netty.handler.ssl.SslClientHelloHandler;
 import io.netty.handler.ssl.SslHandler;
-import io.netty.util.NetUtil;
 import io.netty.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.netty.util.ReferenceCountUtil.*;
@@ -126,46 +122,36 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
         }
     }
 
-    private class SniExtractorHandler extends AbstractSniHandler<Object> {
+    private class SniExtractorHandler extends AbstractSniHandler<Address> {
 
         @Override
-        protected Future<Object> lookup(ChannelHandlerContext ctx, String hostname) {
+        protected Future<Address> lookup(ChannelHandlerContext ctx, String hostname) {
             LOGGER.debug("Client SNI lookup with {}", hostname);
             if (hostname != null) {
-                Address address = null;
-
-                //in a transparent proxy, destination host ip and port are unreliable.
-                //need to assume outbound port of 443 and we need to connect to remote
-                if (isTransparentProxy()) {
-                    address = new Address(hostname, 443);
-                } else {
-                    address = new Address(hostname, connectionContext.getServerAddr().getPort());
-                }
-                connectionContext.withServerAddr(address);
+                int port = isTransparentProxy() ? 443 : connectionContext.getServerAddr().getPort();
+                return ctx.executor().newSucceededFuture(new Address(hostname, port));
             }
             return ctx.executor().newSucceededFuture(null);
         }
 
         @Override
-        protected void onLookupComplete(ChannelHandlerContext ctx, String hostname, Future<Object> future) {
+        protected void onLookupComplete(ChannelHandlerContext ctx, String hostname, Future<Address> future) {
+            Address address = future.getNow();
             if (isTransparentProxy()) {
-                ctx.pipeline().replace(ctx.name(), null, new ConnectToRemote());
-            } else {
-                ctx.pipeline().remove(this);
-            }
-        }
-    }
-
-    public class ConnectToRemote extends ChannelInboundHandlerAdapter {
-
-        @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            connectionContext.connect(connectionContext.getServerAddr(), ctx).addListener((future) -> {
-                if (!future.isSuccess()) {
+                if (address == null) {
+                    LOGGER.error("SNI is required for tls connection in transparent mode");
                     ctx.close();
+                    return;
                 }
-            });
-            ctx.fireChannelRead(msg);
+                connectionContext.connect(address, ctx).addListener((channelFuture) -> {
+                    if (!channelFuture.isSuccess()) {
+                        ctx.close();
+                    }
+                });
+            } else {
+                connectionContext.withServerAddr(address);
+            }
+            ctx.pipeline().remove(this);
         }
     }
 
