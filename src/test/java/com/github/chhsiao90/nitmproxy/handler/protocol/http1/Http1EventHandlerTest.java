@@ -135,4 +135,19 @@ public class Http1EventHandlerTest {
         assertEquals(15, event.getResponseBodySize());
     }
 
+    @Test
+    public void shouldPipeRequests() {
+        assertTrue(channel.writeInbound(request(HTTP_1_1, GET, "localhost", "/first")));
+        assertTrue(channel.writeInbound(request(HTTP_1_1, GET, "localhost", "/second")));
+        assertTrue(channel.writeOutbound(defaultResponse("First Response")));
+        assertTrue(channel.writeOutbound(defaultResponse("Second Response")));
+
+        ArgumentCaptor<HttpEvent> captor = ArgumentCaptor.forClass(HttpEvent.class);
+        verify(listener, times(2)).onHttpEvent(captor.capture());
+
+        assertThat(captor.getAllValues()).hasSize(2);
+        assertEquals("/first", captor.getAllValues().get(0).getPath());
+        assertEquals("/second", captor.getAllValues().get(1).getPath());
+    }
+
 }
