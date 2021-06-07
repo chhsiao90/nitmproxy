@@ -14,6 +14,8 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.LastHttpContent;
 
 import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpHeadersUtil.*;
@@ -28,7 +30,7 @@ public class Http1EventHandler extends ChannelDuplexHandler {
     private ConnectionContext connectionContext;
 
     private long requestTime;
-    private FullHttpRequest request;
+    private Queue<FullHttpRequest> requests;
     private HttpResponse response;
     private AtomicLong responseBytes;
 
@@ -43,13 +45,14 @@ public class Http1EventHandler extends ChannelDuplexHandler {
             ConnectionContext connectionContext) {
         this.listener = master.httpEventListener();
         this.connectionContext = connectionContext;
+        this.requests = new ConcurrentLinkedQueue<>();
     }
 
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
             throws Exception {
         if (msg instanceof HttpResponse) {
-            checkState(request != null, "request is null");
+            checkState(!requests.isEmpty(), "request is empty");
             checkState(response == null, "response is not null");
             listener.onHttp1Response((HttpResponse) msg);
             responseBytes = new AtomicLong();
@@ -61,8 +64,9 @@ public class Http1EventHandler extends ChannelDuplexHandler {
             responseBytes.addAndGet(httpContent.content().readableBytes());
         }
         if (msg instanceof LastHttpContent) {
-            checkState(request != null, "request is null");
+            checkState(!requests.isEmpty(), "request is empty");
             checkState(response != null, "response is null");
+            FullHttpRequest request = requests.poll();
             long responseTime = currentTimeMillis();
             HttpEvent httpEvent = HttpEvent.builder(connectionContext)
                                            .method(request.method())
@@ -82,7 +86,6 @@ public class Http1EventHandler extends ChannelDuplexHandler {
             } finally {
                 release(request);
                 release(response);
-                request = null;
                 requestTime = 0;
                 response = null;
                 responseBytes = null;
@@ -92,13 +95,11 @@ public class Http1EventHandler extends ChannelDuplexHandler {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (!(msg instanceof FullHttpRequest)) {
             ctx.fireChannelRead(msg);
             return;
         }
-        checkState(request == null, "request is not null");
-        checkState(response == null, "response is not null");
 
         FullHttpRequest request = (FullHttpRequest) msg;
         Optional<FullHttpResponse> response =  listener.onHttp1Request((FullHttpRequest) msg);
@@ -111,7 +112,7 @@ public class Http1EventHandler extends ChannelDuplexHandler {
             return;
         }
 
-        this.request = retain(request);
+        this.requests.add(request.retain());
         this.requestTime = currentTimeMillis();
         ctx.fireChannelRead(msg);
     }
@@ -134,7 +135,7 @@ public class Http1EventHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        release(request);
+        requests.forEach(FullHttpRequest::release);
         release(response);
         ctx.fireChannelInactive();
     }
