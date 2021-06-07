@@ -71,7 +71,9 @@ public class Http2EventHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        if (!(msg instanceof Http2FrameWrapper)) {
+        if (!(msg instanceof Http2FrameWrapper)
+            || (!Http2FrameWrapper.isFrame(msg, Http2HeadersFrame.class)
+                && !Http2FrameWrapper.isFrame(msg, Http2DataFrame.class))) {
             ctx.fireChannelRead(msg);
             return;
         }
