@@ -3,6 +3,7 @@ package com.github.chhsiao90.nitmproxy;
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
 import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolDetector;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1ProtocolDetector;
+import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2ProtocolDetector;
 import com.github.chhsiao90.nitmproxy.listener.ForwardListener;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.google.common.base.Joiner;
@@ -13,6 +14,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManager;
 import java.security.Provider;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -62,7 +64,8 @@ public class NitmProxyConfig {
 
         httpListeners = new ArrayList<>();
         forwardListeners = new ArrayList<>();
-        detectors = Collections.singletonList(Http1ProtocolDetector.INSTANCE);
+        detectors = Collections.unmodifiableList(
+                Arrays.asList(Http1ProtocolDetector.INSTANCE, Http2ProtocolDetector.INSTANCE));
     }
 
     public void init() {

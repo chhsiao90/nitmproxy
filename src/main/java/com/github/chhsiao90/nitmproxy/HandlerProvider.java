@@ -36,6 +36,8 @@ public class HandlerProvider {
             return http2FrontendHandler();
         } else if (protocol.equals(Protocols.FORWARD)) {
             return forwardFrontendHandler();
+        } else if (protocol.equals(Protocols.UNKNOWN)) {
+            return unknownFrontendHandler();
         } else {
             throw new NitmProxyException("Unsupported protocol");
         }
@@ -48,6 +50,8 @@ public class HandlerProvider {
             return http2BackendHandler();
         } else if (protocol.equals(Protocols.FORWARD)) {
             return forwardBackendHandler();
+        } else if (protocol.equals(Protocols.UNKNOWN)) {
+            return unknownBackendHandler();
         } else {
             throw new NitmProxyException("Unsupported protocol");
         }
@@ -95,5 +99,13 @@ public class HandlerProvider {
 
     public ChannelHandler forwardEventHandler() {
         return new ForwardEventHandler(master, context);
+    }
+
+    public ChannelHandler unknownFrontendHandler() {
+        return new ProtocolSelectHandler(context);
+    }
+
+    public ChannelHandler unknownBackendHandler() {
+        return new ProtocolSelectHandler(context);
     }
 }

@@ -218,7 +218,7 @@ public class TlsFrontendHandler extends ChannelDuplexHandler {
             } else if (ApplicationProtocolNames.HTTP_2.equals(protocol)) {
                 configureProtocol(tlsCtx, Protocols.HTTP_2);
             } else {
-                configureProtocol(tlsCtx, Protocols.FORWARD);
+                configureProtocol(tlsCtx, Protocols.UNKNOWN);
             }
         }
     }
