@@ -1,5 +1,6 @@
 package com.github.chhsiao90.nitmproxy.listener;
 
+import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.event.ForwardEvent;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -11,7 +12,7 @@ public class ForwardEventLogger implements ForwardListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(ForwardEventLogger.class);
 
     @Override
-    public void onForwardEvent(ForwardEvent event) {
+    public void onForwardEvent(ConnectionContext connectionContext, ForwardEvent event) {
         LOGGER.info("{} {} {} {} {}",
                 event.getTimeSpent(),
                 event.getServer(),
@@ -21,12 +22,12 @@ public class ForwardEventLogger implements ForwardListener {
     }
 
     @Override
-    public void onForwardRequest(ByteBuf byteBuf) {
+    public void onForwardRequest(ConnectionContext connectionContext, ByteBuf byteBuf) {
         LOGGER.debug("{}", ByteBufUtil.hexDump(byteBuf));
     }
 
     @Override
-    public void onForwardResponse(ByteBuf byteBuf) {
+    public void onForwardResponse(ConnectionContext connectionContext, ByteBuf byteBuf) {
         LOGGER.debug("{}", ByteBufUtil.hexDump(byteBuf));
     }
 }

@@ -54,13 +54,13 @@ public class Http1EventHandler extends ChannelDuplexHandler {
         if (msg instanceof HttpResponse) {
             checkState(!requests.isEmpty(), "request is empty");
             checkState(response == null, "response is not null");
-            listener.onHttp1Response((HttpResponse) msg);
+            listener.onHttp1Response(connectionContext, (HttpResponse) msg);
             responseBytes = new AtomicLong();
             response = retain((HttpResponse) msg);
         }
         if (msg instanceof HttpContent) {
             HttpContent httpContent = (HttpContent) msg;
-            listener.onHttp1ResponseData((HttpContent) msg);
+            listener.onHttp1ResponseData(connectionContext, (HttpContent) msg);
             responseBytes.addAndGet(httpContent.content().readableBytes());
         }
         if (msg instanceof LastHttpContent) {
@@ -102,7 +102,7 @@ public class Http1EventHandler extends ChannelDuplexHandler {
         }
 
         FullHttpRequest request = (FullHttpRequest) msg;
-        Optional<FullHttpResponse> response =  listener.onHttp1Request((FullHttpRequest) msg);
+        Optional<FullHttpResponse> response =  listener.onHttp1Request(connectionContext, (FullHttpRequest) msg);
         if (response.isPresent()) {
             try {
                 sendResponse(ctx, request, response.get());

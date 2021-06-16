@@ -85,7 +85,7 @@ public class Http2EventHandler extends ChannelDuplexHandler {
             return;
         }
 
-        Optional<Http2FramesWrapper> responseOptional = listener.onHttp2Request(fullRequest.get());
+        Optional<Http2FramesWrapper> responseOptional = listener.onHttp2Request(connectionContext, fullRequest.get());
         if (!responseOptional.isPresent()) {
             fullRequest.get().getAllFrames().forEach(ctx::fireChannelRead);
             return;

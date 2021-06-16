@@ -1,5 +1,6 @@
 package com.github.chhsiao90.nitmproxy.listener;
 
+import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2DataFrameWrapper;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper;
@@ -18,23 +19,24 @@ public interface HttpListener {
     default void onHttpEvent(HttpEvent event) {
     }
 
-    default Optional<FullHttpResponse> onHttp1Request(FullHttpRequest request) {
+    default Optional<FullHttpResponse> onHttp1Request(ConnectionContext connectionContext, FullHttpRequest request) {
         return Optional.empty();
     }
 
-    default void onHttp1Response(HttpResponse response) {
+    default void onHttp1Response(ConnectionContext connectionContext, HttpResponse response) {
     }
 
-    default void onHttp1ResponseData(HttpContent data) {
+    default void onHttp1ResponseData(ConnectionContext connectionContext, HttpContent data) {
     }
 
-    default Optional<Http2FramesWrapper> onHttp2Request(Http2FramesWrapper request) {
+    default Optional<Http2FramesWrapper> onHttp2Request(ConnectionContext connectionContext,
+                                                        Http2FramesWrapper request) {
         return Optional.empty();
     }
 
-    default void onHttp2Response(Http2FrameWrapper<Http2HeadersFrame> frame) {
+    default void onHttp2Response(ConnectionContext connectionContext, Http2FrameWrapper<Http2HeadersFrame> frame) {
     }
 
-    default void onHttp2ResponseData(Http2DataFrameWrapper frame) {
+    default void onHttp2ResponseData(ConnectionContext connectionContext, Http2DataFrameWrapper frame) {
     }
 }
