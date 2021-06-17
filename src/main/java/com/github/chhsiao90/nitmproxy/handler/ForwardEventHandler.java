@@ -36,7 +36,7 @@ public class ForwardEventHandler extends ChannelDuplexHandler {
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
             throws Exception {
         ByteBuf byteBuf = (ByteBuf) msg;
-        listener.onForwardResponse(byteBuf);
+        listener.onForwardResponse(connectionContext, byteBuf);
         long responseTime = currentTimeMillis();
         ForwardEvent forwardEvent = ForwardEvent.builder(connectionContext)
                 .requestBodySize(requestBytes)
@@ -45,7 +45,7 @@ public class ForwardEventHandler extends ChannelDuplexHandler {
                 .responseBodySize(byteBuf.readableBytes())
                 .build();
         try {
-            listener.onForwardEvent(forwardEvent);
+            listener.onForwardEvent(connectionContext, forwardEvent);
         } finally {
             requestTime = 0;
         }
@@ -55,7 +55,7 @@ public class ForwardEventHandler extends ChannelDuplexHandler {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         ByteBuf byteBuf = (ByteBuf) msg;
-        listener.onForwardRequest(byteBuf);
+        listener.onForwardRequest(connectionContext, byteBuf);
         requestBytes = byteBuf.readableBytes();
         requestTime = currentTimeMillis();
         super.channelRead(ctx, msg);

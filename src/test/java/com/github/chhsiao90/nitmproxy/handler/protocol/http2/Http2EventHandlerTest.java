@@ -52,7 +52,7 @@ public class Http2EventHandlerTest {
 
     @Test
     public void shouldSendRequestAfterRequestEnded() {
-        when(listener.onHttp2Request(any())).thenReturn(Optional.empty());
+        when(listener.onHttp2Request(any(), any())).thenReturn(Optional.empty());
         List<Http2FrameWrapper<?>> requestFrames = Http2FramesWrapper
                 .builder(1)
                 .request(textRequest(HttpVersion.HTTP_1_1, POST, "localhost", "/", "Hello nitmproxy"))
@@ -70,7 +70,7 @@ public class Http2EventHandlerTest {
 
     @Test
     public void shouldLogWithFullResponse() {
-        when(listener.onHttp2Request(any())).thenReturn(Optional.empty());
+        when(listener.onHttp2Request(any(), any())).thenReturn(Optional.empty());
 
         Http2FramesWrapper
                 .builder(1)
@@ -104,7 +104,7 @@ public class Http2EventHandlerTest {
 
     @Test
     public void shouldInterceptWithResponse() {
-        when(listener.onHttp2Request(any())).thenReturn(Optional.of(Http2FramesWrapper
+        when(listener.onHttp2Request(any(), any())).thenReturn(Optional.of(Http2FramesWrapper
                 .builder(1)
                 .response(defaultResponse("Hello nitmproxy"))
                 .build()));

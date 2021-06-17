@@ -56,7 +56,7 @@ public class Http1EventHandlerTest {
 
     @Test
     public void shouldLogWithFullResponse() {
-        when(listener.onHttp1Request(any())).thenReturn(Optional.empty());
+        when(listener.onHttp1Request(any(), any())).thenReturn(Optional.empty());
 
         assertTrue(channel.writeInbound(defaultRequest()));
         assertTrue(channel.writeOutbound(defaultResponse("Hello Nitmproxy")));
@@ -80,7 +80,7 @@ public class Http1EventHandlerTest {
 
     @Test
     public void shouldLogWithResponseAndContent() {
-        when(listener.onHttp1Request(any())).thenReturn(Optional.empty());
+        when(listener.onHttp1Request(any(), any())).thenReturn(Optional.empty());
 
         HttpResponse response = new DefaultHttpResponse(HTTP_1_1, OK);
         response.headers()
@@ -110,7 +110,7 @@ public class Http1EventHandlerTest {
 
     @Test
     public void shouldInterceptWithResponse() {
-        when(listener.onHttp1Request(any())).thenReturn(Optional.of(defaultResponse("Hello Nitmproxy")));
+        when(listener.onHttp1Request(any(), any())).thenReturn(Optional.of(defaultResponse("Hello Nitmproxy")));
 
         assertFalse(channel.writeInbound(defaultRequest()));
         assertChannel(channel)

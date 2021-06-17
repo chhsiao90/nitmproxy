@@ -1,5 +1,6 @@
 package com.github.chhsiao90.nitmproxy.listener;
 
+import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.event.ForwardEvent;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2DataFrameWrapper;
@@ -37,54 +38,56 @@ public class NitmProxyListenerManager implements HttpListener, ForwardListener {
     }
 
     @Override
-    public Optional<FullHttpResponse> onHttp1Request(FullHttpRequest request) {
-        Function<HttpListener, Stream<FullHttpResponse>> apply = listener -> listener.onHttp1Request(request)
+    public Optional<FullHttpResponse> onHttp1Request(ConnectionContext connectionContext, FullHttpRequest request) {
+        Function<HttpListener, Stream<FullHttpResponse>> apply = listener -> listener.onHttp1Request(connectionContext,
+                request)
                 .map(Stream::of)
                 .orElse(Stream.empty());
         return httpListeners.stream().flatMap(apply).findFirst();
     }
 
     @Override
-    public void onHttp1Response(HttpResponse response) {
-        httpListeners.forEach(listener -> listener.onHttp1Response(response));
+    public void onHttp1Response(ConnectionContext connectionContext, HttpResponse response) {
+        httpListeners.forEach(listener -> listener.onHttp1Response(connectionContext, response));
     }
 
     @Override
-    public void onHttp1ResponseData(HttpContent data) {
-        httpListeners.forEach(listener -> listener.onHttp1ResponseData(data));
+    public void onHttp1ResponseData(ConnectionContext connectionContext, HttpContent data) {
+        httpListeners.forEach(listener -> listener.onHttp1ResponseData(connectionContext, data));
     }
 
     @Override
-    public Optional<Http2FramesWrapper> onHttp2Request(Http2FramesWrapper request) {
+    public Optional<Http2FramesWrapper> onHttp2Request(ConnectionContext connectionContext,
+                                                       Http2FramesWrapper request) {
         Function<HttpListener, Stream<Http2FramesWrapper>> apply = listener -> listener
-                .onHttp2Request(request)
+                .onHttp2Request(connectionContext, request)
                 .map(Stream::of)
                 .orElse(Stream.empty());
         return httpListeners.stream().flatMap(apply).findFirst();
     }
 
     @Override
-    public void onHttp2Response(Http2FrameWrapper<Http2HeadersFrame> frame) {
-        httpListeners.forEach(listener -> listener.onHttp2Response(frame));
+    public void onHttp2Response(ConnectionContext connectionContext, Http2FrameWrapper<Http2HeadersFrame> frame) {
+        httpListeners.forEach(listener -> listener.onHttp2Response(connectionContext, frame));
     }
 
     @Override
-    public void onHttp2ResponseData(Http2DataFrameWrapper frame) {
-        httpListeners.forEach(listener -> listener.onHttp2ResponseData(frame));
+    public void onHttp2ResponseData(ConnectionContext connectionContext, Http2DataFrameWrapper frame) {
+        httpListeners.forEach(listener -> listener.onHttp2ResponseData(connectionContext, frame));
     }
 
     @Override
-    public void onForwardEvent(ForwardEvent event) {
-        forwardListeners.forEach(listener -> listener.onForwardEvent(event));
+    public void onForwardEvent(ConnectionContext connectionContext, ForwardEvent event) {
+        forwardListeners.forEach(listener -> listener.onForwardEvent(connectionContext, event));
     }
 
     @Override
-    public void onForwardRequest(ByteBuf byteBuf) {
-        forwardListeners.forEach(listener -> listener.onForwardRequest(byteBuf));
+    public void onForwardRequest(ConnectionContext connectionContext, ByteBuf byteBuf) {
+        forwardListeners.forEach(listener -> listener.onForwardRequest(connectionContext, byteBuf));
     }
 
     @Override
-    public void onForwardResponse(ByteBuf byteBuf) {
-        forwardListeners.forEach(listener -> listener.onForwardResponse(byteBuf));
+    public void onForwardResponse(ConnectionContext connectionContext, ByteBuf byteBuf) {
+        forwardListeners.forEach(listener -> listener.onForwardResponse(connectionContext, byteBuf));
     }
 }
