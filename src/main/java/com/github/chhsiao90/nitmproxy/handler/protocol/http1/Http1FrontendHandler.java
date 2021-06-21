@@ -88,7 +88,7 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
             handleTransparentProxyConnection(ctx, request);
         } else {
             LOGGER.debug("{} : {}", connectionContext, request);
-            connectionContext.serverChannel().writeAndFlush(ReferenceCountUtil.retain(request));
+            connectionContext.serverChannel().writeAndFlush(request);
         }
     }
 
