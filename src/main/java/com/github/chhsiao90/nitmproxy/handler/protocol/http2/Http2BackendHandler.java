@@ -1,6 +1,7 @@
 package com.github.chhsiao90.nitmproxy.handler.protocol.http2;
 
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
+import com.github.chhsiao90.nitmproxy.exception.NitmProxyException;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Maps;
@@ -95,59 +96,56 @@ public class Http2BackendHandler
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         LOGGER.debug("{} : channelInactive", connectionContext);
+        if (!ready.isDone()) {
+            ready.setFailure(new NitmProxyException("Channel was closed"));
+        }
         connectionContext.clientChannel().close();
     }
 
     @Override
     public int onDataRead(ChannelHandlerContext ctx, int streamId, ByteBuf data, int padding,
-                          boolean endOfStream) throws Http2Exception {
+                          boolean endOfStream) {
         int originStreamId = getOriginStreamId(streamId);
-        connectionContext.clientChannel().writeAndFlush(frameWrapper(originStreamId,
-                                                                     new DefaultHttp2DataFrame(data.retainedDuplicate(),
-                                                                                               endOfStream, padding)));
-        return data.readableBytes() + padding;
+        int processed = data.readableBytes() + padding;
+        connectionContext.clientChannel().writeAndFlush(
+                frameWrapper(originStreamId, new DefaultHttp2DataFrame(data.retain(), endOfStream, padding)));
+        return processed;
     }
 
     @Override
     public void onHeadersRead(ChannelHandlerContext ctx, int streamId, Http2Headers headers,
-                              int padding, boolean endOfStream) throws Http2Exception {
+                              int padding, boolean endOfStream) {
         int originStreamId = getOriginStreamId(streamId);
         connectionContext.clientChannel().writeAndFlush(
-                frameWrapper(originStreamId,
-                             new DefaultHttp2HeadersFrame(headers, endOfStream, padding)));
+                frameWrapper(originStreamId, new DefaultHttp2HeadersFrame(headers, endOfStream, padding)));
     }
 
     @Override
     public void onHeadersRead(ChannelHandlerContext ctx, int streamId, Http2Headers headers,
-                              int streamDependency, short weight, boolean exclusive, int padding, boolean endOfStream)
-            throws Http2Exception {
+                              int streamDependency, short weight, boolean exclusive, int padding, boolean endOfStream) {
         int originStreamId = getOriginStreamId(streamId);
         connectionContext.clientChannel().writeAndFlush(
-                frameWrapper(originStreamId,
-                             new DefaultHttp2HeadersFrame(headers, endOfStream, padding)));
+                frameWrapper(originStreamId, new DefaultHttp2HeadersFrame(headers, endOfStream, padding)));
     }
 
     @Override
     public void onPriorityRead(ChannelHandlerContext ctx, int streamId, int streamDependency,
-                               short weight, boolean exclusive) throws Http2Exception {
+                               short weight, boolean exclusive) {
     }
 
     @Override
-    public void onRstStreamRead(ChannelHandlerContext ctx, int streamId, long errorCode)
-            throws Http2Exception {
+    public void onRstStreamRead(ChannelHandlerContext ctx, int streamId, long errorCode) {
         int originStreamId = getOriginStreamId(streamId);
         connectionContext.clientChannel().writeAndFlush(
-                frameWrapper(originStreamId,
-                             new DefaultHttp2ResetFrame(errorCode)));
+                frameWrapper(originStreamId, new DefaultHttp2ResetFrame(errorCode)));
     }
 
     @Override
-    public void onSettingsAckRead(ChannelHandlerContext ctx) throws Http2Exception {
+    public void onSettingsAckRead(ChannelHandlerContext ctx) {
     }
 
     @Override
-    public void onSettingsRead(ChannelHandlerContext ctx, Http2Settings settings)
-            throws Http2Exception {
+    public void onSettingsRead(ChannelHandlerContext ctx, Http2Settings settings) {
         ready.setSuccess();
 
         connectionContext.clientChannel().writeAndFlush(
@@ -156,26 +154,25 @@ public class Http2BackendHandler
     }
 
     @Override
-    public void onPingRead(ChannelHandlerContext ctx, long data) throws Http2Exception {
+    public void onPingRead(ChannelHandlerContext ctx, long data) {
     }
 
     @Override
-    public void onPingAckRead(ChannelHandlerContext ctx, long data) throws Http2Exception {
+    public void onPingAckRead(ChannelHandlerContext ctx, long data) {
     }
 
     @Override
     public void onPushPromiseRead(ChannelHandlerContext ctx, int streamId, int promisedStreamId,
-                                  Http2Headers headers, int padding) throws Http2Exception {
+                                  Http2Headers headers, int padding) {
     }
 
     @Override
     public void onGoAwayRead(ChannelHandlerContext ctx, int lastStreamId, long errorCode,
-                             ByteBuf debugData) throws Http2Exception {
+                             ByteBuf debugData) {
     }
 
     @Override
-    public void onWindowUpdateRead(ChannelHandlerContext ctx, int streamId, int windowSizeIncrement)
-            throws Http2Exception {
+    public void onWindowUpdateRead(ChannelHandlerContext ctx, int streamId, int windowSizeIncrement) {
         int originStreamId = getOriginStreamId(streamId);
         connectionContext.clientChannel().writeAndFlush(
                 frameWrapper(originStreamId,
@@ -184,7 +181,7 @@ public class Http2BackendHandler
 
     @Override
     public void onUnknownFrame(ChannelHandlerContext ctx, byte frameType, int streamId,
-                               Http2Flags flags, ByteBuf payload) throws Http2Exception {
+                               Http2Flags flags, ByteBuf payload) {
     }
 
     private int getUpstreamStreamId(int streamId) {

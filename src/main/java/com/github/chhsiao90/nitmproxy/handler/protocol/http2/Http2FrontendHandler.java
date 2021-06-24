@@ -63,7 +63,6 @@ public class Http2FrontendHandler
         if (msg instanceof Http2FrameWrapper) {
             Http2FrameWrapper<?> frame = (Http2FrameWrapper<?>) msg;
             frame.write(ctx, http2ConnectionHandler.encoder(), frame.streamId(), promise);
-            ctx.flush();
         } else {
             ctx.write(msg, promise);
         }
@@ -71,78 +70,70 @@ public class Http2FrontendHandler
 
     @Override
     public int onDataRead(ChannelHandlerContext ctx, int streamId, ByteBuf data, int padding,
-                          boolean endOfStream) throws Http2Exception {
-        ctx.fireChannelRead(frameWrapper(streamId,
-                                         new DefaultHttp2DataFrame(data.retainedDuplicate(), endOfStream, padding)));
-        return data.readableBytes() + padding;
+                          boolean endOfStream) {
+        int processed = data.readableBytes() + padding;
+        ctx.fireChannelRead(frameWrapper(streamId, new DefaultHttp2DataFrame(data.retain(), endOfStream, padding)));
+        return processed;
     }
 
     @Override
     public void onHeadersRead(ChannelHandlerContext ctx, int streamId, Http2Headers headers,
-                              int padding, boolean endOfStream) throws Http2Exception {
-        ctx.fireChannelRead(frameWrapper(streamId,
-                                         new DefaultHttp2HeadersFrame(headers, endOfStream, padding)));
+                              int padding, boolean endOfStream) {
+        ctx.fireChannelRead(frameWrapper(streamId, new DefaultHttp2HeadersFrame(headers, endOfStream, padding)));
     }
 
     @Override
     public void onHeadersRead(ChannelHandlerContext ctx, int streamId, Http2Headers headers,
-                              int streamDependency, short weight, boolean exclusive, int padding, boolean endOfStream)
-            throws Http2Exception {
-        ctx.fireChannelRead(frameWrapper(streamId,
-                                         new DefaultHttp2HeadersFrame(headers, endOfStream, padding)));
+                              int streamDependency, short weight, boolean exclusive, int padding, boolean endOfStream) {
+        ctx.fireChannelRead(frameWrapper(streamId, new DefaultHttp2HeadersFrame(headers, endOfStream, padding)));
     }
 
     @Override
     public void onPriorityRead(ChannelHandlerContext ctx, int streamId, int streamDependency,
-                               short weight, boolean exclusive) throws Http2Exception {
+                               short weight, boolean exclusive) {
     }
 
     @Override
-    public void onRstStreamRead(ChannelHandlerContext ctx, int streamId, long errorCode)
-            throws Http2Exception {
-        ctx.writeAndFlush(frameWrapper(streamId,
-                                       new DefaultHttp2ResetFrame(errorCode)));
+    public void onRstStreamRead(ChannelHandlerContext ctx, int streamId, long errorCode) {
+        ctx.writeAndFlush(frameWrapper(streamId, new DefaultHttp2ResetFrame(errorCode)));
     }
 
     @Override
-    public void onSettingsAckRead(ChannelHandlerContext ctx) throws Http2Exception {
+    public void onSettingsAckRead(ChannelHandlerContext ctx) {
     }
 
     @Override
-    public void onSettingsRead(ChannelHandlerContext ctx, Http2Settings settings)
-            throws Http2Exception {
-        ctx.fireChannelRead(frameWrapper(0,
-                                         new DefaultHttp2SettingsFrame(settings)));
+    public void onSettingsRead(ChannelHandlerContext ctx, Http2Settings settings) {
+        ctx.fireChannelRead(frameWrapper(0, new DefaultHttp2SettingsFrame(settings)));
     }
 
     @Override
-    public void onPingRead(ChannelHandlerContext ctx, long data) throws Http2Exception {
+    public void onPingRead(ChannelHandlerContext ctx, long data) {
     }
 
     @Override
-    public void onPingAckRead(ChannelHandlerContext ctx, long data) throws Http2Exception {
+    public void onPingAckRead(ChannelHandlerContext ctx, long data) {
     }
 
     @Override
     public void onPushPromiseRead(ChannelHandlerContext ctx, int streamId, int promisedStreamId,
-                                  Http2Headers headers, int padding) throws Http2Exception {
+                                  Http2Headers headers, int padding) {
     }
 
     @Override
     public void onGoAwayRead(ChannelHandlerContext ctx, int lastStreamId, long errorCode,
-                             ByteBuf debugData) throws Http2Exception {
+                             ByteBuf debugData) {
     }
 
     @Override
-    public void onWindowUpdateRead(ChannelHandlerContext ctx, int streamId, int windowSizeIncrement)
-            throws Http2Exception {
+    public void onWindowUpdateRead(ChannelHandlerContext ctx, int streamId, int windowSizeIncrement) {
         ctx.fireChannelRead(frameWrapper(streamId,
                                          new DefaultHttp2WindowUpdateFrame(windowSizeIncrement)));
     }
 
     @Override
     public void onUnknownFrame(ChannelHandlerContext ctx, byte frameType, int streamId,
-                               Http2Flags flags, ByteBuf payload) throws Http2Exception {
+                               Http2Flags flags, ByteBuf payload) {
     }
 
     private class ToUpstreamHandler extends ChannelInboundHandlerAdapter {
@@ -155,10 +146,7 @@ public class Http2FrontendHandler
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            if (msg instanceof Http2DataFrameWrapper) {
-                Http2DataFrameWrapper frameWrapper = (Http2DataFrameWrapper) msg;
-                connectionContext.serverChannel().writeAndFlush(frameWrapper);
-            } else if (msg instanceof Http2FrameWrapper) {
+            if (msg instanceof Http2FrameWrapper) {
                 connectionContext.serverChannel().writeAndFlush(msg);
             } else {
                 super.channelRead(ctx, msg);

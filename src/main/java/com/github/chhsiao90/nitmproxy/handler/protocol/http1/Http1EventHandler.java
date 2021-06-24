@@ -134,9 +134,8 @@ public class Http1EventHandler extends ChannelDuplexHandler {
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void handlerRemoved(ChannelHandlerContext ctx) {
         requests.forEach(FullHttpRequest::release);
         release(response);
-        ctx.fireChannelInactive();
     }
 }

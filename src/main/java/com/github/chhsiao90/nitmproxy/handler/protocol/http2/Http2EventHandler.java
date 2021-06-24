@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpHeadersUtil.*;
+import static io.netty.util.ReferenceCountUtil.*;
 import static java.lang.System.*;
 
 public class Http2EventHandler extends ChannelDuplexHandler {
@@ -80,14 +81,15 @@ public class Http2EventHandler extends ChannelDuplexHandler {
 
         Http2FrameWrapper<?> frameWrapper = (Http2FrameWrapper<?>) msg;
         FrameCollector frameCollector = streams.computeIfAbsent(frameWrapper.streamId(), this::newFrameCollector);
-        Optional<Http2FramesWrapper> fullRequest = frameCollector.onRequestFrame(frameWrapper.frame());
-        if (!fullRequest.isPresent()) {
+        Optional<Http2FramesWrapper> requestOptional = frameCollector.onRequestFrame(frameWrapper.frame());
+        if (!requestOptional.isPresent()) {
             return;
         }
 
-        Optional<Http2FramesWrapper> responseOptional = listener.onHttp2Request(connectionContext, fullRequest.get());
+        Http2FramesWrapper request = requestOptional.get();
+        Optional<Http2FramesWrapper> responseOptional = listener.onHttp2Request(connectionContext, request);
         if (!responseOptional.isPresent()) {
-            fullRequest.get().getAllFrames().forEach(ctx::fireChannelRead);
+            request.getAllFrames().forEach(ctx::fireChannelRead);
             return;
         }
 
@@ -99,15 +101,15 @@ public class Http2EventHandler extends ChannelDuplexHandler {
             response.getAllFrames().forEach(ctx::write);
             ctx.flush();
         } finally {
+            release(request);
             frameCollector.release();
             streams.remove(frameWrapper.streamId());
         }
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void handlerRemoved(ChannelHandlerContext ctx) {
         streams.values().forEach(FrameCollector::release);
-        ctx.fireChannelInactive();
     }
 
     private FrameCollector newFrameCollector(int streamId) {

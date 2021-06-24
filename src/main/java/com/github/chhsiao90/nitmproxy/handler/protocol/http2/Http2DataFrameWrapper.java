@@ -14,7 +14,7 @@ public class Http2DataFrameWrapper
 
     @Override
     public ByteBuf content() {
-        return frame().content();
+        return frame.content();
     }
 
     @Override
@@ -39,7 +39,7 @@ public class Http2DataFrameWrapper
 
     @Override
     public int refCnt() {
-        return frame().refCnt();
+        return frame.refCnt();
     }
 
     @Override
