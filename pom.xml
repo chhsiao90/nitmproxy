@@ -18,7 +18,7 @@
     <tcnative.version>2.0.35.Final</tcnative.version>
     <tcnative.classifier>${os.detected.classifier}</tcnative.classifier>
     <guava.version>30.1.1-jre</guava.version>
-    <logback.version>1.2.3</logback.version>
+    <logback.version>1.2.4</logback.version>
     <bouncycastle.version>1.69</bouncycastle.version>
     <commons-cli.version>1.4</commons-cli.version>
     <junit.version>4.13.2</junit.version>
