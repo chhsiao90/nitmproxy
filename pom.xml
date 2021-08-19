@@ -23,7 +23,7 @@
     <commons-cli.version>1.4</commons-cli.version>
     <junit.version>4.13.2</junit.version>
     <assertj.version>3.20.2</assertj.version>
-    <mockito.version>3.11.2</mockito.version>
+    <mockito.version>3.12.0</mockito.version>
     <jetty.alpnAgent.version>2.0.10</jetty.alpnAgent.version>
     <jetty.alpnAgent.path>"${settings.localRepository}"/org/mortbay/jetty/alpn/jetty-alpn-agent/${jetty.alpnAgent.version}/jetty-alpn-agent-${jetty.alpnAgent.version}.jar</jetty.alpnAgent.path>
     <argLine.alpnAgent>-javaagent:${jetty.alpnAgent.path}</argLine.alpnAgent>
