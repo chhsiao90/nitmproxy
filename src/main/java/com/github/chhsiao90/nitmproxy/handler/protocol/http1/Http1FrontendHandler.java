@@ -21,7 +21,6 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpUtil.*;
+import static com.github.chhsiao90.nitmproxy.util.LogWrappers.*;
 
 public class Http1FrontendHandler extends ChannelDuplexHandler {
 
@@ -87,7 +87,7 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
         } else if (master.config().getProxyMode() == ProxyMode.TRANSPARENT && !connectionContext.connected()) {
             handleTransparentProxyConnection(ctx, request);
         } else {
-            LOGGER.debug("{} : {}", connectionContext, request);
+            LOGGER.debug("{} : {}", connectionContext, className(request));
             connectionContext.serverChannel().writeAndFlush(request);
         }
     }
@@ -129,8 +129,7 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
             });
             FullHttpResponse response =
                     new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
-            LOGGER.debug("{} : {}", connectionContext,
-                    response.getClass().getSimpleName());
+            LOGGER.debug("{} : {}", connectionContext, className(response));
             ctx.writeAndFlush(response);
             ctx.pipeline().replace(Http1FrontendHandler.this, null,
                     connectionContext.provider().tlsFrontendHandler());
@@ -146,7 +145,7 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
         request.setUri(httpUrl.getPath());
         connectionContext.connect(address, ctx).addListener((ChannelFuture future) -> {
             if (future.isSuccess()) {
-                LOGGER.debug("{} : {}", connectionContext, request);
+                LOGGER.debug("{} : {}", connectionContext, className(request));
                 future.channel().writeAndFlush(request);
             } else {
                 request.release();
@@ -163,7 +162,7 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
         Address address = Address.resolve(request.headers().get(HttpHeaderNames.HOST), HTTP_PORT);
         connectionContext.connect(address, ctx).addListener((ChannelFuture future) -> {
             if (future.isSuccess()) {
-                LOGGER.debug("{} : {}", connectionContext, request);
+                LOGGER.debug("{} : {}", connectionContext, className(request));
                 future.channel().writeAndFlush(request);
             } else {
                 request.release();

@@ -18,7 +18,6 @@ import io.netty.handler.codec.http2.DefaultHttp2WindowUpdateFrame;
 import io.netty.handler.codec.http2.Http2Connection;
 import io.netty.handler.codec.http2.Http2ConnectionHandler;
 import io.netty.handler.codec.http2.Http2ConnectionHandlerBuilder;
-import io.netty.handler.codec.http2.Http2Exception;
 import io.netty.handler.codec.http2.Http2Flags;
 import io.netty.handler.codec.http2.Http2FrameListener;
 import io.netty.handler.codec.http2.Http2FrameLogger;
@@ -30,8 +29,9 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper.*;
+import static com.github.chhsiao90.nitmproxy.util.LogWrappers.*;
 import static io.netty.handler.logging.LogLevel.*;
-import static java.lang.String.*;
+import static io.netty.util.ReferenceCountUtil.*;
 
 public class Http2BackendHandler
         extends ChannelDuplexHandler
@@ -89,12 +89,14 @@ public class Http2BackendHandler
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        LOGGER.debug(format("%s : exceptionCaught", connectionContext), cause);
+        LOGGER.debug("{} : exceptionCaught with {}", connectionContext, cause.getMessage());
         ctx.close();
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        super.channelInactive(ctx);
+
         LOGGER.debug("{} : channelInactive", connectionContext);
         if (!ready.isDone()) {
             ready.setFailure(new NitmProxyException("Channel was closed"));
@@ -107,8 +109,10 @@ public class Http2BackendHandler
                           boolean endOfStream) {
         int originStreamId = getOriginStreamId(streamId);
         int processed = data.readableBytes() + padding;
-        connectionContext.clientChannel().writeAndFlush(
-                frameWrapper(originStreamId, new DefaultHttp2DataFrame(data.retain(), endOfStream, padding)));
+        Http2DataFrameWrapper frame = frameWrapper(originStreamId,
+                new DefaultHttp2DataFrame(data.copy(), endOfStream, padding));
+        connectionContext.clientChannel().writeAndFlush(touch(frame,
+                format("%s context=%s", frame, connectionContext)));
         return processed;
     }
 

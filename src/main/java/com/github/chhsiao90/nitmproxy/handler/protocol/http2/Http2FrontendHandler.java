@@ -15,7 +15,6 @@ import io.netty.handler.codec.http2.DefaultHttp2WindowUpdateFrame;
 import io.netty.handler.codec.http2.Http2Connection;
 import io.netty.handler.codec.http2.Http2ConnectionHandler;
 import io.netty.handler.codec.http2.Http2ConnectionHandlerBuilder;
-import io.netty.handler.codec.http2.Http2Exception;
 import io.netty.handler.codec.http2.Http2Flags;
 import io.netty.handler.codec.http2.Http2FrameListener;
 import io.netty.handler.codec.http2.Http2FrameLogger;
@@ -25,7 +24,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper.*;
+import static com.github.chhsiao90.nitmproxy.util.LogWrappers.*;
 import static io.netty.handler.logging.LogLevel.*;
+import static io.netty.util.ReferenceCountUtil.*;
 
 public class Http2FrontendHandler
         extends ChannelOutboundHandlerAdapter
@@ -58,10 +59,17 @@ public class Http2FrontendHandler
     }
 
     @Override
+    public void handlerRemoved(ChannelHandlerContext ctx) {
+        LOGGER.debug("{} : handlerRemoved", connectionContext);
+    }
+
+    @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
             throws Exception {
+        LOGGER.debug("{} : {}", connectionContext, msg);
         if (msg instanceof Http2FrameWrapper) {
-            Http2FrameWrapper<?> frame = (Http2FrameWrapper<?>) msg;
+            Http2FrameWrapper<?> frame = (Http2FrameWrapper<?>) touch(msg,
+                    format("%s context=%s", msg, connectionContext));
             frame.write(ctx, http2ConnectionHandler.encoder(), frame.streamId(), promise);
         } else {
             ctx.write(msg, promise);
@@ -146,6 +154,7 @@ public class Http2FrontendHandler
 
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+            LOGGER.debug("{} : {}", connectionContext, msg);
             if (msg instanceof Http2FrameWrapper) {
                 connectionContext.serverChannel().writeAndFlush(msg);
             } else {

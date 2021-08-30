@@ -125,6 +125,6 @@ public class Http2FrameWrapper<T extends Http2Frame> {
 
     @Override
     public String toString() {
-        return streamId + ": " + frame;
+        return frame.name() + " Frame: streamId=" + streamId;
     }
 }

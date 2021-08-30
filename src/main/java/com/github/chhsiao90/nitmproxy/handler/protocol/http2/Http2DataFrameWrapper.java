@@ -75,4 +75,12 @@ public class Http2DataFrameWrapper
     public boolean release(int decrement) {
         return frame.release(decrement);
     }
+
+    @Override
+    public String toString() {
+        return frame.name() + " Frame:" +
+               " streamId=" + streamId +
+               " endStream=" + frame.isEndStream() +
+               " length=" + frame.content().readableBytes();
+    }
 }
