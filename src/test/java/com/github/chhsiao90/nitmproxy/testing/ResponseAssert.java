@@ -1,20 +1,22 @@
 package com.github.chhsiao90.nitmproxy.testing;
 
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-
-import org.assertj.core.api.AbstractObjectAssert;
-import org.assertj.core.api.StringAssert;
-
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import org.assertj.core.api.AbstractObjectAssert;
+import org.assertj.core.api.InstanceOfAssertFactory;
+
+import static io.netty.handler.codec.http.HttpResponseStatus.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.*;
 
 public class ResponseAssert extends AbstractObjectAssert<ResponseAssert, FullHttpResponse> {
 
   public ResponseAssert(FullHttpResponse actual) {
     super(actual, ResponseAssert.class);
+  }
+
+  public static InstanceOfAssertFactory<FullHttpResponse, ResponseAssert> asResponse() {
+    return new InstanceOfAssertFactory<>(FullHttpResponse.class, ResponseAssert::new);
   }
 
   public ResponseAssert ok() {
@@ -27,8 +29,8 @@ public class ResponseAssert extends AbstractObjectAssert<ResponseAssert, FullHtt
     return this;
   }
 
-  public StringAssert text() {
-    return new StringAssert(actual.content().toString(UTF_8));
+  public ByteBufAssert content() {
+    return new ByteBufAssert(actual.content());
   }
 
   public ResponseAssert hasHeader(String name, String value) {

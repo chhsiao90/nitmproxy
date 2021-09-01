@@ -5,6 +5,7 @@ import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolDetector;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1ProtocolDetector;
 import com.github.chhsiao90.nitmproxy.listener.ForwardListener;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.github.chhsiao90.nitmproxy.tls.UnsafeAccessSupport;
 import com.google.common.base.Joiner;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
@@ -44,7 +45,9 @@ public class NitmProxyConfig {
     private NitmProxyStatusListener statusListener;
     private List<HttpListener> httpListeners;
     private List<ForwardListener> forwardListeners;
+
     private TrustManager trustManager;
+    private UnsafeAccessSupport unsafeAccessSupport = UnsafeAccessSupport.DENY;
 
     private List<ProtocolDetector> detectors;
 
@@ -162,6 +165,14 @@ public class NitmProxyConfig {
         this.maxContentLength = maxContentLength;
     }
 
+    public NitmProxyStatusListener getStatusListener() {
+        return statusListener;
+    }
+
+    public void setStatusListener(NitmProxyStatusListener statusListener) {
+        this.statusListener = statusListener;
+    }
+
     public List<HttpListener> getHttpListeners() {
         return httpListeners;
     }
@@ -178,20 +189,20 @@ public class NitmProxyConfig {
         this.forwardListeners = forwardListeners;
     }
 
+    public UnsafeAccessSupport getUnsafeAccessSupport() {
+        return unsafeAccessSupport;
+    }
+
+    public void setUnsafeAccessSupport(UnsafeAccessSupport unsafeAccessSupport) {
+        this.unsafeAccessSupport = unsafeAccessSupport;
+    }
+
     public List<ProtocolDetector> getDetectors() {
         return detectors;
     }
 
     public void setDetectors(List<ProtocolDetector> detectors) {
         this.detectors = detectors;
-    }
-
-    public NitmProxyStatusListener getStatusListener() {
-        return statusListener;
-    }
-
-    public void setStatusListener(NitmProxyStatusListener statusListener) {
-        this.statusListener = statusListener;
     }
 
     @Override

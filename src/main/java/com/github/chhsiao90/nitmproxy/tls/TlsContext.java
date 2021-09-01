@@ -10,6 +10,7 @@ import static java.util.Collections.*;
 public class TlsContext {
 
     private boolean enabled = true;
+    private UnsafeAccess unsafeAccess = UnsafeAccess.ACCEPT;
     private Promise<List<String>> protocols;
     private Promise<String> protocol;
 
@@ -18,6 +19,13 @@ public class TlsContext {
         return this;
     }
 
+    public void askUnsafeAccess() {
+        unsafeAccess = UnsafeAccess.ASK;
+    }
+
+    public UnsafeAccess unsafeAccess() {
+        return unsafeAccess;
+    }
     /**
      * Get the ALPN protocols sent from the client.
      *
