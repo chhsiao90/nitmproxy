@@ -1,4 +1,4 @@
-package com.github.chhsiao90.nitmproxy;
+package com.github.chhsiao90.nitmproxy.tls;
 
 import com.github.chhsiao90.nitmproxy.exception.TlsException;
 import io.netty.util.concurrent.Promise;

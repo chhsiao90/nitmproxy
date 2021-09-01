@@ -1,7 +1,6 @@
 package com.github.chhsiao90.nitmproxy.tls;
 
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
-import com.github.chhsiao90.nitmproxy.TlsContext;
 import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.ApplicationProtocolConfig.Protocol;
 import io.netty.handler.ssl.ApplicationProtocolConfig.SelectedListenerFailureBehavior;
