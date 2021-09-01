@@ -8,6 +8,7 @@ import io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBehavior;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.handler.ssl.util.TrustManagerFactoryWrapper;
 
 import javax.net.ssl.SSLException;
 import javax.net.ssl.TrustManagerFactory;
@@ -40,17 +41,10 @@ public final class TlsUtil {
                 .forClient()
                 .protocols(context.config().getTlsProtocols())
                 .sslContextProvider(context.config().getSslProvider())
-                .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()));
+                .applicationProtocolConfig(applicationProtocolConfig(context.tlsCtx()))
+                .trustManager(trustManagerFactory(context));
         if (context.config().getClientKeyManagerFactory() != null) {
             builder.keyManager(context.config().getClientKeyManagerFactory());
-        }
-        if (context.config().getTrustManager() != null) {
-            builder.trustManager(context.config().getTrustManager());
-        }
-        if (context.config().isInsecure()) {
-            builder.trustManager(InsecureTrustManagerFactory.INSTANCE);
-        } else if (TRUST_MANAGER_FACTORY != null && context.config().getTrustManager() == null) {
-            builder.trustManager(TRUST_MANAGER_FACTORY);
         }
         return builder.build();
     }
@@ -84,5 +78,19 @@ public final class TlsUtil {
             }
         }
         return new String[] { HTTP_1_1 };
+    }
+
+    private static TrustManagerFactory trustManagerFactory(ConnectionContext context) {
+        UnsafeAccessSupport unsafeAccessSupport = context.config().getUnsafeAccessSupport();
+        if (context.config().getTrustManager() != null) {
+            return unsafeAccessSupport.create(
+                    new TrustManagerFactoryWrapper(context.config().getTrustManager()),
+                    context);
+        } else if (context.config().isInsecure()) {
+            return unsafeAccessSupport.create(InsecureTrustManagerFactory.INSTANCE, context);
+        } else if (TRUST_MANAGER_FACTORY != null) {
+            return unsafeAccessSupport.create(TRUST_MANAGER_FACTORY, context);
+        }
+        return null;
     }
 }
