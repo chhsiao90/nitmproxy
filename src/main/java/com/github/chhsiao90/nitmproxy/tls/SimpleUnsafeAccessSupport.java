@@ -2,6 +2,7 @@ package com.github.chhsiao90.nitmproxy.tls;
 
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
+import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FramesWrapper;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
 import com.google.common.io.Resources;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -68,7 +69,7 @@ public class SimpleUnsafeAccessSupport implements UnsafeAccessSupport {
             }
             switch (accepted.get(connectionContext.getServerAddr())) {
                 case ASK:
-                    return handleAsk(connectionContext, request);
+                    return handleAskHttp1(connectionContext, request);
                 case DENY:
                     return Optional.of(createDenyResponse());
                 case ACCEPT:
@@ -77,17 +78,58 @@ public class SimpleUnsafeAccessSupport implements UnsafeAccessSupport {
             }
         }
 
-        private Optional<FullHttpResponse> handleAsk(ConnectionContext connectionContext, FullHttpRequest request) {
+        @Override
+        public Optional<Http2FramesWrapper> onHttp2Request(ConnectionContext context, Http2FramesWrapper request) {
+            if (context.getServerAddr() == null || !accepted.containsKey(context.getServerAddr())) {
+                return Optional.empty();
+            }
+            switch (accepted.get(context.getServerAddr())) {
+                case ASK:
+                    return handleAskHttp2(context, request);
+                case DENY:
+                    return Optional.of(Http2FramesWrapper
+                            .builder(request.getStreamId())
+                            .response(createDenyResponse())
+                            .build());
+                case ACCEPT:
+                default:
+                    return Optional.empty();
+            }
+        }
+
+        private Optional<FullHttpResponse> handleAskHttp1(ConnectionContext context, FullHttpRequest request) {
             if (request.uri().endsWith(ACCEPT_MAGIC)) {
                 request.setUri(request.uri().replace(ACCEPT_MAGIC, ""));
-                accepted.put(connectionContext.getServerAddr(), UnsafeAccess.ACCEPT);
+                accepted.put(context.getServerAddr(), UnsafeAccess.ACCEPT);
                 return Optional.empty();
             }
             if (request.uri().endsWith(DENY_MAGIC)) {
-                accepted.put(connectionContext.getServerAddr(), UnsafeAccess.DENY);
+                accepted.put(context.getServerAddr(), UnsafeAccess.DENY);
                 return Optional.of(createDenyResponse());
             }
             return Optional.of(createAskResponse(request.uri()));
+        }
+
+        private Optional<Http2FramesWrapper> handleAskHttp2(
+                ConnectionContext connectionContext,
+                Http2FramesWrapper request) {
+            String uri = request.getHeaders().headers().path().toString();
+            if (uri.endsWith(ACCEPT_MAGIC)) {
+                request.getHeaders().headers().path(uri.replace(ACCEPT_MAGIC, ""));
+                accepted.put(connectionContext.getServerAddr(), UnsafeAccess.ACCEPT);
+                return Optional.empty();
+            }
+            if (uri.endsWith(DENY_MAGIC)) {
+                accepted.put(connectionContext.getServerAddr(), UnsafeAccess.DENY);
+                return Optional.of(Http2FramesWrapper
+                        .builder(request.getStreamId())
+                        .response(createDenyResponse())
+                        .build());
+            }
+            return Optional.of(Http2FramesWrapper
+                    .builder(request.getStreamId())
+                    .response(createAskResponse(request.getHeaders().headers().path().toString()))
+                    .build());
         }
 
         private FullHttpResponse createDenyResponse() {
