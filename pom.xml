@@ -13,7 +13,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <netty.version>4.1.67.Final</netty.version>
+    <netty.version>4.1.68.Final</netty.version>
     <tcnative.artifactId>netty-tcnative-boringssl-static</tcnative.artifactId>
     <tcnative.version>2.0.41.Final</tcnative.version>
     <tcnative.classifier>${os.detected.classifier}</tcnative.classifier>
