@@ -128,7 +128,7 @@ public class Http1EventHandlerTest {
         assertEquals("localhost", event.getHost());
         assertEquals("/", event.getPath());
         assertEquals(0, event.getRequestBodySize());
-        assertThat(event.getRequestTime()).isCloseTo(currentTimeMillis(), Offset.offset(100L));
+        assertThat(event.getRequestTime()).isCloseTo(currentTimeMillis(), Offset.offset(200L));
         assertEquals(OK, event.getStatus());
         assertEquals(TEXT_PLAIN.toString(), event.getContentType());
         assertThat(event.getResponseTime()).isGreaterThanOrEqualTo(0);
