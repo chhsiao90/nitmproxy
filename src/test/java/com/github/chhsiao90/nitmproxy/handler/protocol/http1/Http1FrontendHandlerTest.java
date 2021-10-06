@@ -9,17 +9,16 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpVersion;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpUtil.*;
-import static io.netty.util.ReferenceCountUtil.*;
+import static com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert.*;
+import static com.google.common.net.HttpHeaders.*;
+import static io.netty.handler.codec.http.HttpMethod.*;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -57,18 +56,15 @@ public class Http1FrontendHandlerTest {
         Http1FrontendHandler handler = tunneledHandler();
         inboundChannel.pipeline().addLast(handler);
 
-        assertFalse(inboundChannel.writeInbound(toBytes(defaultRequest())));
-
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
-
-        FullHttpRequest request = (FullHttpRequest) outboundChannel.outboundMessages().poll();
-        assertEquals(HttpMethod.GET, request.method());
-        assertEquals(HttpVersion.HTTP_1_1, request.protocolVersion());
-        assertEquals("/", request.uri());
-        assertEquals("localhost", request.headers().get(HttpHeaderNames.HOST));
-        assertEquals(0, request.content().readableBytes());
-        release(request);
+        assertTrue(inboundChannel.writeInbound(toBytes(defaultRequest())));
+        assertChannel(inboundChannel)
+                .hasInboundMessage()
+                .hasRequest()
+                .hasMethod(GET)
+                .hasUrl("/")
+                .hasHeader(HOST, "localhost")
+                .hasContent("")
+                .release();
     }
 
     @Test
@@ -76,15 +72,25 @@ public class Http1FrontendHandlerTest {
         Http1FrontendHandler handler = tunneledHandler();
         inboundChannel.pipeline().addLast(handler);
 
-        assertFalse(inboundChannel.writeInbound(toBytes(defaultRequest())));
+        assertTrue(inboundChannel.writeInbound(toBytes(defaultRequest())));
+        assertChannel(inboundChannel)
+                .hasInboundMessage()
+                .hasRequest()
+                .hasMethod(GET)
+                .hasUrl("/")
+                .hasHeader(HOST, "localhost")
+                .hasContent("")
+                .release();
 
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
-        release(outboundChannel.outboundMessages().poll());
-
-        assertFalse(inboundChannel.writeInbound(toBytes(defaultRequest())));
-        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
-        release(outboundChannel.outboundMessages().poll());
+        assertTrue(inboundChannel.writeInbound(toBytes(defaultRequest())));
+        assertChannel(inboundChannel)
+                .hasInboundMessage()
+                .hasRequest()
+                .hasMethod(GET)
+                .hasUrl("/")
+                .hasHeader(HOST, "localhost")
+                .hasContent("")
+                .release();
     }
 
     @Test
@@ -93,17 +99,17 @@ public class Http1FrontendHandlerTest {
         inboundChannel.pipeline().addLast(handler);
 
         ByteBuf requestBytes = toBytes(request(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "localhost:9000", "http://localhost:9000/"));
-        assertFalse(inboundChannel.writeInbound(requestBytes));
+                HttpVersion.HTTP_1_1, GET, "localhost:9000", "http://localhost:9000/"));
+        assertTrue(inboundChannel.writeInbound(requestBytes));
 
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
-
-        HttpRequest httpRequest = (HttpRequest) outboundChannel.outboundMessages().poll();
-        assertEquals(httpRequest.method(), HttpMethod.GET);
-        assertEquals(httpRequest.protocolVersion(), HttpVersion.HTTP_1_1);
-        assertEquals(httpRequest.uri(), "/");
-        release(httpRequest);
+        assertChannel(inboundChannel)
+                .hasInboundMessage()
+                .hasRequest()
+                .hasMethod(GET)
+                .hasUrl("/")
+                .hasHeader(HOST, "localhost:9000")
+                .hasContent("")
+                .release();
     }
 
     @Test
@@ -112,29 +118,27 @@ public class Http1FrontendHandlerTest {
         inboundChannel.pipeline().addLast(handler);
 
         ByteBuf requestBytes = toBytes(request(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "localhost:9000", "http://localhost:9000/"));
-        assertFalse(inboundChannel.writeInbound(requestBytes.copy()));
-
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
-
-        HttpRequest httpRequest = (HttpRequest) outboundChannel.outboundMessages().poll();
-        assertEquals(httpRequest.method(), HttpMethod.GET);
-        assertEquals(httpRequest.protocolVersion(), HttpVersion.HTTP_1_1);
-        assertEquals(httpRequest.uri(), "/");
-        release(httpRequest);
+                HttpVersion.HTTP_1_1, GET, "localhost:9000", "http://localhost:9000/"));
+        assertTrue(inboundChannel.writeInbound(requestBytes.copy()));
+        assertChannel(inboundChannel)
+                .hasInboundMessage()
+                .hasRequest()
+                .hasMethod(GET)
+                .hasUrl("/")
+                .hasHeader(HOST, "localhost:9000")
+                .hasContent("")
+                .release();
 
         // Second request
-        assertFalse(inboundChannel.writeInbound(requestBytes));
-
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
-
-        httpRequest = (HttpRequest) outboundChannel.outboundMessages().poll();
-        assertEquals(httpRequest.method(), HttpMethod.GET);
-        assertEquals(httpRequest.protocolVersion(), HttpVersion.HTTP_1_1);
-        assertEquals(httpRequest.uri(), "/");
-        release(httpRequest);
+        assertTrue(inboundChannel.writeInbound(requestBytes));
+        assertChannel(inboundChannel)
+                .hasInboundMessage()
+                .hasRequest()
+                .hasMethod(GET)
+                .hasUrl("/")
+                .hasHeader(HOST, "localhost:9000")
+                .hasContent("")
+                .release();
     }
 
     @Test
@@ -143,33 +147,32 @@ public class Http1FrontendHandlerTest {
         inboundChannel.pipeline().addLast(handler);
 
         ByteBuf firstRequestBytes = toBytes(request(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "localhost:8000", "http://localhost:8000/"));
-        assertFalse(inboundChannel.writeInbound(firstRequestBytes));
+                HttpVersion.HTTP_1_1, GET, "localhost:8000", "http://localhost:8000/"));
 
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
-
-        HttpRequest httpRequest = (HttpRequest) outboundChannel.outboundMessages().poll();
-        assertEquals(httpRequest.method(), HttpMethod.GET);
-        assertEquals(httpRequest.protocolVersion(), HttpVersion.HTTP_1_1);
-        assertEquals(httpRequest.uri(), "/");
-        release(httpRequest);
+        assertTrue(inboundChannel.writeInbound(firstRequestBytes));
+        assertChannel(inboundChannel)
+                .hasInboundMessage()
+                .hasRequest()
+                .hasMethod(GET)
+                .hasUrl("/")
+                .hasHeader(HOST, "localhost:8000")
+                .hasContent("")
+                .release();
 
         EmbeddedChannel firstOutboundChannel = outboundChannel;
 
         // Second request
         ByteBuf secondRequestBytes = toBytes(request(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "localhost:9000", "http://localhost:9000/"));
-        assertFalse(inboundChannel.writeInbound(secondRequestBytes));
-
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
-
-        httpRequest = (HttpRequest) outboundChannel.outboundMessages().poll();
-        assertEquals(httpRequest.method(), HttpMethod.GET);
-        assertEquals(httpRequest.protocolVersion(), HttpVersion.HTTP_1_1);
-        assertEquals(httpRequest.uri(), "/");
-        release(httpRequest);
+                HttpVersion.HTTP_1_1, GET, "localhost:9000", "http://localhost:9000/"));
+        assertTrue(inboundChannel.writeInbound(secondRequestBytes));
+        assertChannel(inboundChannel)
+                .hasInboundMessage()
+                .hasRequest()
+                .hasMethod(GET)
+                .hasUrl("/")
+                .hasHeader(HOST, "localhost:9000")
+                .hasContent("")
+                .release();
 
         assertNotSame(firstOutboundChannel, outboundChannel);
         assertFalse(firstOutboundChannel.isActive());
@@ -181,7 +184,7 @@ public class Http1FrontendHandlerTest {
         inboundChannel.pipeline().addLast(handler);
 
         ByteBuf requestBytes = toBytes(request(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "localhost:8000", "http://localhost:8000/"));
+                HttpVersion.HTTP_1_1, GET, "localhost:8000", "http://localhost:8000/"));
         assertFalse(inboundChannel.writeInbound(requestBytes));
 
         assertFalse(inboundChannel.isActive());
@@ -193,34 +196,24 @@ public class Http1FrontendHandlerTest {
         inboundChannel.pipeline().addLast(handler);
 
         ByteBuf firstRequestBytes = toBytes(request(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "localhost:8000", "http://localhost:8000/"));
-        assertFalse(inboundChannel.writeInbound(firstRequestBytes));
-
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
-
-        HttpRequest httpRequest = (HttpRequest) outboundChannel.outboundMessages().poll();
-        assertEquals(httpRequest.method(), HttpMethod.GET);
-        assertEquals(httpRequest.protocolVersion(), HttpVersion.HTTP_1_1);
-        assertEquals(httpRequest.uri(), "/");
-        release(httpRequest);
+                HttpVersion.HTTP_1_1, GET, "localhost:8000", "http://localhost:8000/"));
+        assertTrue(inboundChannel.writeInbound(firstRequestBytes));
+        assertChannel(inboundChannel)
+                .hasInboundMessage()
+                .hasRequest()
+                .release();
 
         EmbeddedChannel firstOutboundChannel = outboundChannel;
         outboundChannel.close();
 
         // Second request
         ByteBuf secondRequestBytes = toBytes(request(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "localhost:8000", "http://localhost:8000/"));
-        assertFalse(inboundChannel.writeInbound(secondRequestBytes));
-
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertTrue(outboundChannel.outboundMessages().peek() instanceof FullHttpRequest);
-
-        httpRequest = (HttpRequest) outboundChannel.outboundMessages().poll();
-        assertEquals(httpRequest.method(), HttpMethod.GET);
-        assertEquals(httpRequest.protocolVersion(), HttpVersion.HTTP_1_1);
-        assertEquals(httpRequest.uri(), "/");
-        release(httpRequest);
+                HttpVersion.HTTP_1_1, GET, "localhost:8000", "http://localhost:8000/"));
+        assertTrue(inboundChannel.writeInbound(secondRequestBytes));
+        assertChannel(inboundChannel)
+                .hasInboundMessage()
+                .hasRequest()
+                .release();
 
         assertNotSame(firstOutboundChannel, outboundChannel);
     }
@@ -237,14 +230,11 @@ public class Http1FrontendHandlerTest {
         assertNotNull(outboundChannel);
         assertTrue(outboundChannel.isActive());
 
-        assertEquals(1, inboundChannel.outboundMessages().size());
-        assertTrue(inboundChannel.outboundMessages().peek() instanceof ByteBuf);
-
-        ByteBuf respByteBuf = (ByteBuf) inboundChannel.outboundMessages().poll();
-        byte[] respBytes = new byte[respByteBuf.readableBytes()];
-        respByteBuf.readBytes(respBytes);
-        assertEquals("HTTP/1.1 200 OK\r\n\r\n", new String(respBytes));
-        respByteBuf.release();
+        assertChannel(inboundChannel)
+                .hasOutboundMessage()
+                .hasByteBuf()
+                .hasContent("HTTP/1.1 200 OK\r\n\r\n")
+                .release();
     }
 
     private Http1FrontendHandler httpProxyHandler(boolean outboundAvailable) {

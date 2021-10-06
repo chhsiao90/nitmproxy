@@ -54,7 +54,7 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
         addedHandlers.forEach(handler -> ctx.pipeline().addBefore(ctx.name(), null, handler));
 
         if (tunneled) {
-            ctx.pipeline().addBefore(ctx.name(), null, connectionContext.provider().wsFrontendHandler());
+            ctx.pipeline().addAfter(ctx.name(), null, connectionContext.provider().wsFrontendHandler());
         }
     }
 
@@ -88,13 +88,12 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
         } else if (master.config().getProxyMode() == ProxyMode.TRANSPARENT && !connectionContext.connected()) {
             handleTransparentProxyConnection(ctx, request);
         } else {
-            LOGGER.debug("{} : {}", connectionContext, className(request));
-            connectionContext.serverChannel().writeAndFlush(request);
+            ctx.fireChannelRead(request);
         }
     }
 
     @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
         if (evt instanceof OutboundChannelClosedEvent) {
             if (tunneled) {
                 ctx.close();
@@ -104,8 +103,7 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
         ctx.fireUserEventTriggered(evt);
     }
 
-    private void handleTunnelProxyConnection(ChannelHandlerContext ctx,
-                                             FullHttpRequest request) throws Exception {
+    private void handleTunnelProxyConnection(ChannelHandlerContext ctx, FullHttpRequest request) {
         try {
             Address address = Address.resolve(request.uri(), HTTPS_PORT);
             connectionContext.connect(address, ctx).addListener((future) -> {
@@ -115,7 +113,7 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
             });
             FullHttpResponse response =
                     new DefaultFullHttpResponse(request.protocolVersion(), HttpResponseStatus.OK);
-            LOGGER.debug("{} : {}", connectionContext, className(response));
+            LOGGER.debug("{} : {}", connectionContext, description(response));
             ctx.writeAndFlush(response);
             ctx.pipeline().replace(Http1FrontendHandler.this, null,
                     connectionContext.provider().tlsFrontendHandler());
@@ -124,15 +122,14 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
         }
     }
 
-    private void handleHttpProxyConnection(ChannelHandlerContext ctx,
-                                           FullHttpRequest request) throws Exception {
+    private void handleHttpProxyConnection(ChannelHandlerContext ctx, FullHttpRequest request) {
         HttpUrl httpUrl = HttpUrl.resolve(request.uri());
         Address address = new Address(httpUrl.getHost(), httpUrl.getPort());
         request.setUri(httpUrl.getPath());
         connectionContext.connect(address, ctx).addListener((ChannelFuture future) -> {
             if (future.isSuccess()) {
-                LOGGER.debug("{} : {}", connectionContext, className(request));
-                future.channel().writeAndFlush(request);
+                LOGGER.debug("{} : {}", connectionContext, description(request));
+                ctx.fireChannelRead(request);
             } else {
                 request.release();
                 ctx.channel().close();
@@ -148,7 +145,7 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
         Address address = Address.resolve(request.headers().get(HttpHeaderNames.HOST), HTTP_PORT);
         connectionContext.connect(address, ctx).addListener((ChannelFuture future) -> {
             if (future.isSuccess()) {
-                LOGGER.debug("{} : {}", connectionContext, className(request));
+                LOGGER.debug("{} : {}", connectionContext, description(request));
                 future.channel().writeAndFlush(request);
             } else {
                 request.release();

@@ -33,5 +33,6 @@ public class NitmProxyInitializer extends ChannelInitializer<Channel> {
         LOGGER.debug("{} : connection init", context);
 
         channel.pipeline().replace(this, null, context.proxyHandler());
+        channel.pipeline().addLast(context.provider().toServerHandler());
     }
 }

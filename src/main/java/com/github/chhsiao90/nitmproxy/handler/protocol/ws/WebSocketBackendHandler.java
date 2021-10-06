@@ -39,20 +39,13 @@ public class WebSocketBackendHandler extends ChannelDuplexHandler {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof HttpResponse && ((HttpResponse) msg).status() == SWITCHING_PROTOCOLS) {
-            ctx.pipeline().addBefore(ctx.name(), null, new WebSocket13FrameEncoder(true));
-            ctx.pipeline().addBefore(ctx.name(), null, new WebSocket13FrameDecoder(WebSocketDecoderConfig
-                    .newBuilder()
-                    .allowExtensions(true)
-                    .allowMaskMismatch(true)
-                    .build()));
             connectionContext.clientChannel().writeAndFlush(msg).addListener(future -> {
                 if (future.isSuccess()) {
                     configProtocolUpgrade(ctx);
+                } else {
                     ctx.close();
                 }
             });
-        } else if (msg instanceof WebSocketFrame) {
-            connectionContext.clientChannel().writeAndFlush(msg);
         } else {
             ctx.fireChannelRead(msg);
         }
@@ -60,6 +53,13 @@ public class WebSocketBackendHandler extends ChannelDuplexHandler {
 
     private void configProtocolUpgrade(ChannelHandlerContext ctx) {
         LOGGER.debug("{} : web socket upgrade", connectionContext);
-        ctx.pipeline().remove(Http1BackendHandler.class);
+        ChannelHandlerContext httpCtx = ctx.pipeline().context(Http1BackendHandler.class);
+        ctx.pipeline().addBefore(httpCtx.name(), null, new WebSocket13FrameEncoder(true));
+        ctx.pipeline().addBefore(httpCtx.name(), null, new WebSocket13FrameDecoder(
+                WebSocketDecoderConfig.newBuilder()
+                                      .allowExtensions(true)
+                                      .allowMaskMismatch(true)
+                                      .build()));
+        ctx.pipeline().remove(httpCtx.name());
     }
 }

@@ -5,120 +5,94 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.HandlerProvider;
 import com.github.chhsiao90.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpVersion;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static java.nio.charset.StandardCharsets.*;
+import static com.github.chhsiao90.nitmproxy.http.HttpUtil.*;
+import static com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert.*;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class Http1BackendHandlerTest {
     private Http1BackendHandler handler;
 
-    private EmbeddedChannel inboundChannel;
-
-    private EmbeddedChannel outboundChannel;
+    private EmbeddedChannel channel;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         HandlerProvider provider = mock(HandlerProvider.class);
         when(provider.wsBackendHandler()).thenReturn(new ChannelHandlerAdapter() {});
+        when(provider.toClientHandler()).thenReturn(new ChannelHandlerAdapter() {});
 
         NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
         when(master.provider(any())).thenReturn(provider);
 
-        inboundChannel = new EmbeddedChannel();
-
-        outboundChannel = new EmbeddedChannel();
+        channel = new EmbeddedChannel();
 
         ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(new Address("localhost", 8080))
-                .withClientChannel(outboundChannel)
-                .withServerAddr(new Address("localhost", 8080))
-                .withServerChannel(inboundChannel);
+                .withClientChannel(channel);
         handler = new Http1BackendHandler(context);
     }
 
     @After
     public void tearDown() {
-        inboundChannel.finishAndReleaseAll();
-        outboundChannel.finishAndReleaseAll();
+        channel.finishAndReleaseAll();
     }
 
     @Test
-    public void shouldHandlerRequestAndResponse() {
-        inboundChannel.pipeline().addLast(handler);
+    public void shouldHandleRequestAndResponse() {
+        channel.pipeline().addLast(handler);
 
-        DefaultFullHttpRequest req = new DefaultFullHttpRequest(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
-        inboundChannel.writeAndFlush(req);
+        assertTrue(channel.writeOutbound(defaultRequest()));
+        assertChannel(channel)
+                .hasOutboundMessage()
+                .hasByteBuf()
+                .hasContent("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .release();
 
-        assertEquals(1, inboundChannel.outboundMessages().size());
-
-        Object outboundReq = inboundChannel.outboundMessages().poll();
-        assertTrue(outboundReq instanceof ByteBuf);
-        assertEquals("GET / HTTP/1.1\r\n\r\n",
-                new String(readBytes((ByteBuf) outboundReq), US_ASCII));
-
-        DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
-                HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
-        assertFalse(inboundChannel.writeInbound(resp));
-
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertEquals(resp, outboundChannel.outboundMessages().poll());
-
-        resp.release();
+        assertTrue(channel.writeInbound(defaultResponse("test")));
+        assertChannel(channel)
+                .hasInboundMessage()
+                .hasResponse()
+                .release();
     }
 
     @Test
     public void shouldHandleRequestsAndResponses() {
-        inboundChannel.pipeline().addLast(handler);
-
-        DefaultFullHttpRequest req = new DefaultFullHttpRequest(
-                HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
+        channel.pipeline().addLast(handler);
 
         // First request
-        inboundChannel.writeAndFlush(req.retain());
-
-        assertEquals(1, inboundChannel.outboundMessages().size());
-        assertTrue(inboundChannel.outboundMessages().poll() instanceof ByteBuf);
+        assertTrue(channel.writeOutbound(defaultRequest()));
+        assertChannel(channel)
+                .hasOutboundMessage()
+                .hasByteBuf()
+                .hasContent("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .release();
 
         // First response
-        DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
-                HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
-        assertFalse(inboundChannel.writeInbound(resp));
-
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertEquals(resp, outboundChannel.outboundMessages().poll());
+        assertTrue(channel.writeInbound(defaultResponse("test")));
+        assertChannel(channel)
+                .hasInboundMessage()
+                .hasResponse()
+                .release();
 
         // Second request
-        inboundChannel.writeAndFlush(req);
-
-        assertEquals(1, inboundChannel.outboundMessages().size());
-        assertTrue(inboundChannel.outboundMessages().poll() instanceof ByteBuf);
+        assertTrue(channel.writeOutbound(defaultRequest()));
+        assertChannel(channel)
+                .hasOutboundMessage()
+                .hasByteBuf()
+                .hasContent("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n");
 
         // Second response
-        assertFalse(inboundChannel.writeInbound(resp));
-
-        assertEquals(1, outboundChannel.outboundMessages().size());
-        assertEquals(resp, outboundChannel.outboundMessages().poll());
-
-        resp.release();
-    }
-
-    private static byte[] readBytes(ByteBuf byteBuf) {
-        byte[] bytes = new byte[byteBuf.readableBytes()];
-        byteBuf.readBytes(bytes);
-        return bytes;
+        assertTrue(channel.writeInbound(defaultResponse("test")));
+        assertChannel(channel)
+                .hasInboundMessage()
+                .hasResponse()
+                .release();
     }
 }

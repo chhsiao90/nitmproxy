@@ -4,6 +4,8 @@ import com.github.chhsiao90.nitmproxy.exception.NitmProxyException;
 import com.github.chhsiao90.nitmproxy.handler.ForwardBackendHandler;
 import com.github.chhsiao90.nitmproxy.handler.ForwardEventHandler;
 import com.github.chhsiao90.nitmproxy.handler.ForwardFrontendHandler;
+import com.github.chhsiao90.nitmproxy.handler.ToClientHandler;
+import com.github.chhsiao90.nitmproxy.handler.ToServerHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolSelectHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1BackendHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1EventHandler;
@@ -93,6 +95,14 @@ public class HandlerProvider {
 
     public ChannelHandler tlsBackendHandler() {
         return new TlsBackendHandler(master, context);
+    }
+
+    public ChannelHandler toClientHandler() {
+        return new ToClientHandler(context);
+    }
+
+    public ChannelHandler toServerHandler() {
+        return new ToServerHandler(context);
     }
 
     public ChannelHandler forwardFrontendHandler() {
