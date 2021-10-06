@@ -5,6 +5,7 @@ import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1FrontendHandle
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.websocketx.WebSocket13FrameDecoder;
 import io.netty.handler.codec.http.websocketx.WebSocket13FrameEncoder;
@@ -12,6 +13,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketDecoderConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.github.chhsiao90.nitmproxy.http.HttpHeadersUtil.*;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 
 public class WebSocketFrontendHandler extends ChannelDuplexHandler {
@@ -28,11 +30,21 @@ public class WebSocketFrontendHandler extends ChannelDuplexHandler {
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         LOGGER.debug("{} : handlerAdded", connectionContext);
         ctx.pipeline().addBefore(ctx.name(), null, new WebSocketServerCompressionHandler());
+        ctx.pipeline().addBefore(ctx.name(), null, connectionContext.provider().wsEventHandler());
     }
 
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
         LOGGER.debug("{} : handlerRemoved", connectionContext);
+    }
+
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
+        if (msg instanceof FullHttpRequest && isWebSocketUpgrade(((FullHttpRequest) msg).headers())) {
+            FullHttpRequest request = (FullHttpRequest) msg;
+            connectionContext.wsCtx().path(request.uri());
+        }
+        ctx.fireChannelRead(msg);
     }
 
     @Override

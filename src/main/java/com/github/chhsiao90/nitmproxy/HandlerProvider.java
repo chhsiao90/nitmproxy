@@ -16,6 +16,7 @@ import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrontendHandle
 import com.github.chhsiao90.nitmproxy.handler.protocol.tls.TlsBackendHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.tls.TlsFrontendHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.ws.WebSocketBackendHandler;
+import com.github.chhsiao90.nitmproxy.handler.protocol.ws.WebSocketEventHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.ws.WebSocketFrontendHandler;
 import io.netty.channel.ChannelHandler;
 
@@ -71,6 +72,10 @@ public class HandlerProvider {
 
     public ChannelHandler wsFrontendHandler() {
         return new WebSocketFrontendHandler(context);
+    }
+
+    public ChannelHandler wsEventHandler() {
+        return new WebSocketEventHandler(master, context);
     }
 
     public ChannelHandler http1EventHandler() {

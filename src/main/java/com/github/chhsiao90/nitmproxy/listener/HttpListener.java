@@ -9,6 +9,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.codec.http2.Http2DataFrame;
 import io.netty.handler.codec.http2.Http2HeadersFrame;
 
@@ -38,5 +39,11 @@ public interface HttpListener {
     }
 
     default void onHttp2ResponseData(ConnectionContext connectionContext, Http2DataFrameWrapper frame) {
+    }
+
+    default void onSendingWsFrame(ConnectionContext connectionContext, WebSocketFrame frame) {
+    }
+
+    default void onReceivingWsFrame(ConnectionContext connectionContext, WebSocketFrame frame) {
     }
 }
