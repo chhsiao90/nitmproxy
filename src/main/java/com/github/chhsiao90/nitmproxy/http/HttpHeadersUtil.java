@@ -1,5 +1,7 @@
 package com.github.chhsiao90.nitmproxy.http;
 
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http2.Http2Headers;
@@ -46,5 +48,17 @@ public class HttpHeadersUtil {
      */
     public static HttpResponseStatus getStatus(Http2Headers headers) {
         return HttpResponseStatus.valueOf(parseInt(headers.status().toString()));
+    }
+
+    /**
+     * Get whether is a web socket upgrade or not.
+     *
+     * @param headers the http headers
+     * @return {@code true} if it's a ws upgrade, otherwise, {@code false}
+     */
+    public static boolean isWebSocketUpgrade(HttpHeaders headers) {
+        return headers.contains(HttpHeaderNames.UPGRADE) &&
+               headers.containsValue(HttpHeaderNames.CONNECTION, HttpHeaderValues.UPGRADE, true) &&
+               headers.contains(HttpHeaderNames.UPGRADE, HttpHeaderValues.WEBSOCKET, true);
     }
 }

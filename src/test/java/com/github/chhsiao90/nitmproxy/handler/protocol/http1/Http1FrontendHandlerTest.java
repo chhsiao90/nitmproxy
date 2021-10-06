@@ -37,8 +37,8 @@ public class Http1FrontendHandlerTest {
         when(master.config()).thenReturn(new NitmProxyConfig());
         when(master.provider(any())).thenReturn(provider);
         when(provider.http1EventHandler()).thenReturn(new ChannelHandlerAdapter() {});
-        when(provider.http1BackendHandler()).thenReturn(new ChannelHandlerAdapter() {});
         when(provider.tlsFrontendHandler()).thenReturn(new ChannelHandlerAdapter() {});
+        when(provider.wsFrontendHandler()).thenReturn(new ChannelHandlerAdapter() {});
 
         inboundChannel = new EmbeddedChannel();
     }

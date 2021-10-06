@@ -11,14 +11,12 @@ import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import org.slf4j.Logger;
@@ -53,22 +51,25 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
         addedHandlers.add(new HttpServerCodec());
         addedHandlers.add(new HttpObjectAggregator(master.config().getMaxContentLength()));
         addedHandlers.add(connectionContext.provider().http1EventHandler());
-
         addedHandlers.forEach(handler -> ctx.pipeline().addBefore(ctx.name(), null, handler));
+
+        if (tunneled) {
+            ctx.pipeline().addBefore(ctx.name(), null, connectionContext.provider().wsFrontendHandler());
+        }
     }
 
     @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+    public void handlerRemoved(ChannelHandlerContext ctx) {
         LOGGER.debug("{} : handlerRemoved", connectionContext);
         addedHandlers.forEach(handler -> ctx.pipeline().remove(handler));
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        super.channelInactive(ctx);
         if (connectionContext.connected()) {
             connectionContext.serverChannel().close();
         }
-        ctx.fireChannelInactive();
     }
 
     @Override
@@ -101,21 +102,6 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
         }
 
         ctx.fireUserEventTriggered(evt);
-    }
-
-    @Override
-    public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-        if (!(msg instanceof HttpResponse)) {
-            ctx.write(msg, promise);
-            return;
-        }
-        HttpResponse response = (HttpResponse) msg;
-        if (response.status() == HttpResponseStatus.SWITCHING_PROTOCOLS) {
-            ctx.writeAndFlush(msg, promise);
-            ctx.pipeline().replace(ctx.name(), null, connectionContext.provider().forwardFrontendHandler());
-        } else {
-            ctx.write(msg, promise);
-        }
     }
 
     private void handleTunnelProxyConnection(ChannelHandlerContext ctx,

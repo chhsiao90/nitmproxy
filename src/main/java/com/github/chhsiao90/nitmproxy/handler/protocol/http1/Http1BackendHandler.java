@@ -24,6 +24,7 @@ public class Http1BackendHandler extends ChannelInboundHandlerAdapter {
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         LOGGER.debug("{} : handlerAdded", connectionContext);
         ctx.pipeline().addBefore(ctx.name(), null, new HttpClientCodec());
+        ctx.pipeline().addBefore(ctx.name(), null, connectionContext.provider().wsBackendHandler());
     }
 
     @Override

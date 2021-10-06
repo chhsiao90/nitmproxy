@@ -2,9 +2,11 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.http1;
 
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
+import com.github.chhsiao90.nitmproxy.HandlerProvider;
 import com.github.chhsiao90.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -28,8 +30,12 @@ public class Http1BackendHandlerTest {
 
     @Before
     public void setUp() throws Exception {
+        HandlerProvider provider = mock(HandlerProvider.class);
+        when(provider.wsBackendHandler()).thenReturn(new ChannelHandlerAdapter() {});
+
         NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
+        when(master.provider(any())).thenReturn(provider);
 
         inboundChannel = new EmbeddedChannel();
 
