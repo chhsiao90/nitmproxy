@@ -6,7 +6,6 @@ import com.github.chhsiao90.nitmproxy.HandlerProvider;
 import com.github.chhsiao90.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.handler.ToServerHandler;
-import com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -41,10 +40,9 @@ import org.junit.Test;
 import java.util.concurrent.CountDownLatch;
 
 import static com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper.*;
+import static com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert.*;
 import static io.netty.buffer.ByteBufUtil.*;
-import static io.netty.util.ReferenceCountUtil.*;
 import static java.util.concurrent.TimeUnit.*;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -112,7 +110,7 @@ public class Http2FrontendHandlerTest {
             public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
                 ctx.write(msg, promise);
                 if (isFrame(msg, Http2HeadersFrame.class)) {
-                    latch.countDown();
+                    promise.addListener(future -> latch.countDown());
                 }
             }
         });
@@ -124,14 +122,16 @@ public class Http2FrontendHandlerTest {
         });
 
         assertTrue(latch.await(DEFAULT_AWAIT_TIMEOUT_SECONDS, SECONDS));
-        EmbeddedChannelAssert.assertChannel(targetChannel).hasOutboundMessage().hasSize(2);
+        assertChannel(targetChannel).hasOutboundMessage().hasSize(2);
 
-        assertThat(targetChannel.outboundMessages().poll())
-                .isInstanceOf(Http2FrameWrapper.class)
-                .satisfies(wrapper -> assertThat(frame(wrapper)).isInstanceOf(Http2SettingsFrame.class));
-        assertThat(targetChannel.outboundMessages().poll())
-                .isInstanceOf(Http2FrameWrapper.class)
-                .satisfies(wrapper -> assertThat(frame(wrapper)).isInstanceOf(Http2HeadersFrame.class));
+        assertChannel(targetChannel)
+                .outbound()
+                .hasHttp2Frame()
+                .is(Http2SettingsFrame.class);
+        assertChannel(targetChannel)
+                .outbound()
+                .hasHttp2Frame()
+                .isHeadersFrame();
     }
 
     @Test
@@ -143,7 +143,7 @@ public class Http2FrontendHandlerTest {
             public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
                 ctx.write(msg, promise);
                 if (isFrame(msg, Http2DataFrame.class)) {
-                    latch.countDown();
+                    promise.addListener(future -> latch.countDown());
                 }
             }
         });
@@ -157,20 +157,21 @@ public class Http2FrontendHandlerTest {
         });
 
         assertTrue(latch.await(DEFAULT_AWAIT_TIMEOUT_SECONDS, SECONDS));
-        EmbeddedChannelAssert.assertChannel(targetChannel).hasOutboundMessage().hasSize(3);
+        assertChannel(targetChannel).hasOutboundMessage().hasSize(3);
 
-        assertThat(targetChannel.outboundMessages().poll())
-                .isInstanceOf(Http2FrameWrapper.class)
-                .satisfies(wrapper -> assertThat(frame(wrapper)).isInstanceOf(Http2SettingsFrame.class));
-        assertThat(targetChannel.outboundMessages().poll())
-                .isInstanceOf(Http2FrameWrapper.class)
-                .satisfies(wrapper -> assertThat(frame(wrapper)).isInstanceOf(Http2HeadersFrame.class));
-        assertThat(targetChannel.outboundMessages().poll())
-                .isInstanceOf(Http2FrameWrapper.class)
-                .satisfies(wrapper -> {
-                    assertThat(frame(wrapper)).isInstanceOf(Http2DataFrame.class);
-                    release(wrapper);
-                });
+        assertChannel(targetChannel)
+                .outbound()
+                .hasHttp2Frame()
+                .is(Http2SettingsFrame.class);
+        assertChannel(targetChannel)
+                .outbound()
+                .hasHttp2Frame()
+                .isHeadersFrame();
+        assertChannel(targetChannel)
+                .outbound()
+                .hasHttp2Frame()
+                .isDataFrame()
+                .release();
     }
 
     private void bootstrapEnv() throws Exception {

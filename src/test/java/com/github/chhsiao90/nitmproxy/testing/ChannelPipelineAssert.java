@@ -11,6 +11,7 @@ public class ChannelPipelineAssert extends AbstractAssert<ChannelPipelineAssert,
         super(actual, ChannelPipelineAssert.class);
     }
 
+    @SuppressWarnings("all")
     public ChannelPipelineAssert hasHandlers(Class<? extends ChannelHandler>... handlers) {
         Class<?>[] actual = this.actual
                 .toMap()

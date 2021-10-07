@@ -1,5 +1,6 @@
 package com.github.chhsiao90.nitmproxy.testing;
 
+import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -47,6 +48,11 @@ public class ChannelMessagesAssert
   public ByteBufAssert hasByteBuf() {
     has(ByteBuf.class);
     return new ByteBufAssert((ByteBuf) actual.poll());
+  }
+
+  public Http2FrameWrapperAssert hasHttp2Frame() {
+    has(Http2FrameWrapper.class);
+    return new Http2FrameWrapperAssert((Http2FrameWrapper<?>) actual.poll());
   }
 
   public ResponseAssert hasResponse() {
