@@ -13,6 +13,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.codec.http2.Http2HeadersFrame;
 
 import java.util.List;
@@ -83,6 +84,16 @@ public class NitmProxyListenerManager implements HttpListener, ForwardListener {
     @Override
     public void onHttp2ResponseData(ConnectionContext connectionContext, Http2DataFrameWrapper frame) {
         reversedHttpListeners.forEach(listener -> listener.onHttp2ResponseData(connectionContext, frame));
+    }
+
+    @Override
+    public void onSendingWsFrame(ConnectionContext connectionContext, WebSocketFrame frame) {
+        httpListeners.forEach(listener -> listener.onSendingWsFrame(connectionContext, frame));
+    }
+
+    @Override
+    public void onReceivingWsFrame(ConnectionContext connectionContext, WebSocketFrame frame) {
+        reversedHttpListeners.forEach(listener -> listener.onReceivingWsFrame(connectionContext, frame));
     }
 
     @Override

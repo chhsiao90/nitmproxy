@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 
 public class NitmProxyInitializer extends ChannelInitializer<Channel> {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(NitmProxyInitializer.class);
 
     private NitmProxyMaster master;
@@ -22,12 +23,16 @@ public class NitmProxyInitializer extends ChannelInitializer<Channel> {
     }
 
     @Override
-    protected void initChannel(Channel channel) throws Exception {
+    protected void initChannel(Channel channel) {
         InetSocketAddress address = (InetSocketAddress) channel.remoteAddress();
         Address clientAddress = new Address(address.getHostName(), address.getPort());
         ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(clientAddress)
                 .withClientChannel(channel);
-        channel.pipeline().addLast(context.proxyHandler());
+
+        LOGGER.debug("{} : connection init", context);
+
+        channel.pipeline().replace(this, null, context.proxyHandler());
+        channel.pipeline().addLast(context.provider().toServerHandler());
     }
 }

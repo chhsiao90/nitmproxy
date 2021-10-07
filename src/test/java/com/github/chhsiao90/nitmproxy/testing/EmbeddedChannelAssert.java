@@ -11,6 +11,10 @@ public class EmbeddedChannelAssert extends AbstractAssert<EmbeddedChannelAssert,
     super(actual, EmbeddedChannelAssert.class);
   }
 
+  public static EmbeddedChannelAssert assertChannel(EmbeddedChannel actual) {
+    return new EmbeddedChannelAssert(actual);
+  }
+
   public ChannelMessagesAssert hasOutboundMessage() {
     assertThat(actual.outboundMessages()).isNotEmpty();
     return new ChannelMessagesAssert(actual.outboundMessages());
@@ -29,7 +33,7 @@ public class EmbeddedChannelAssert extends AbstractAssert<EmbeddedChannelAssert,
     return new ChannelMessagesAssert(actual.inboundMessages());
   }
 
-  public static EmbeddedChannelAssert assertChannel(EmbeddedChannel actual) {
-    return new EmbeddedChannelAssert(actual);
+  public ChannelPipelineAssert pipeline() {
+    return new ChannelPipelineAssert(actual.pipeline());
   }
 }

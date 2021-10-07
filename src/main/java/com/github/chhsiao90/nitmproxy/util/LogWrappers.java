@@ -1,12 +1,21 @@
 package com.github.chhsiao90.nitmproxy.util;
 
+import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper;
+import io.netty.buffer.ByteBufHolder;
+
 public  class LogWrappers {
 
     private LogWrappers() {
     }
 
-    public static ClassName className(Object msg) {
-        return new ClassName(msg);
+    public static Object description(Object msg) {
+        if (msg instanceof Http2FrameWrapper) {
+            return msg;
+        }
+        if (msg instanceof ByteBufHolder) {
+            return new ByteBufHolderDescription((ByteBufHolder) msg);
+        }
+        return msg;
     }
 
     public static Format format(String format, Object... args) {
@@ -23,6 +32,22 @@ public  class LogWrappers {
         @Override
         public String toString() {
             return msg.getClass().getSimpleName();
+        }
+    }
+
+    public static class ByteBufHolderDescription {
+        private final ByteBufHolder msg;
+
+        public ByteBufHolderDescription(ByteBufHolder msg) {
+            this.msg = msg;
+        }
+
+        @Override
+        public String toString() {
+            return msg.getClass().getSimpleName()
+                    + "(length="
+                    + msg.content().readableBytes()
+                    + ")";
         }
     }
 

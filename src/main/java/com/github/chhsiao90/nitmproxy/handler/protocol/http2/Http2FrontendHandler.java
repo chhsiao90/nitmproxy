@@ -3,7 +3,6 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.http2;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http2.DefaultHttp2Connection;
@@ -54,8 +53,7 @@ public class Http2FrontendHandler
 
         ctx.pipeline()
             .addBefore(ctx.name(), null, http2ConnectionHandler)
-            .addLast(connectionContext.provider().http2EventHandler())
-            .addLast(new ToUpstreamHandler());
+            .addAfter(ctx.name(), null, connectionContext.provider().http2EventHandler());
     }
 
     @Override
@@ -66,7 +64,6 @@ public class Http2FrontendHandler
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
             throws Exception {
-        LOGGER.debug("{} : {}", connectionContext, msg);
         if (msg instanceof Http2FrameWrapper) {
             Http2FrameWrapper<?> frame = (Http2FrameWrapper<?>) touch(msg,
                     format("%s context=%s", msg, connectionContext));
@@ -142,24 +139,5 @@ public class Http2FrontendHandler
     @Override
     public void onUnknownFrame(ChannelHandlerContext ctx, byte frameType, int streamId,
                                Http2Flags flags, ByteBuf payload) {
-    }
-
-    private class ToUpstreamHandler extends ChannelInboundHandlerAdapter {
-
-        @Override
-        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-            LOGGER.debug("{} : channelInactive", connectionContext);
-            connectionContext.serverChannel().close();
-        }
-
-        @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-            LOGGER.debug("{} : {}", connectionContext, msg);
-            if (msg instanceof Http2FrameWrapper) {
-                connectionContext.serverChannel().writeAndFlush(msg);
-            } else {
-                super.channelRead(ctx, msg);
-            }
-        }
     }
 }

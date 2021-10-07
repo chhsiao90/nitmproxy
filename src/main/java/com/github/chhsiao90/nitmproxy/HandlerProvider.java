@@ -4,6 +4,8 @@ import com.github.chhsiao90.nitmproxy.exception.NitmProxyException;
 import com.github.chhsiao90.nitmproxy.handler.ForwardBackendHandler;
 import com.github.chhsiao90.nitmproxy.handler.ForwardEventHandler;
 import com.github.chhsiao90.nitmproxy.handler.ForwardFrontendHandler;
+import com.github.chhsiao90.nitmproxy.handler.ToClientHandler;
+import com.github.chhsiao90.nitmproxy.handler.ToServerHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolSelectHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1BackendHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1EventHandler;
@@ -13,6 +15,9 @@ import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2EventHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrontendHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.tls.TlsBackendHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.tls.TlsFrontendHandler;
+import com.github.chhsiao90.nitmproxy.handler.protocol.ws.WebSocketBackendHandler;
+import com.github.chhsiao90.nitmproxy.handler.protocol.ws.WebSocketEventHandler;
+import com.github.chhsiao90.nitmproxy.handler.protocol.ws.WebSocketFrontendHandler;
 import io.netty.channel.ChannelHandler;
 
 public class HandlerProvider {
@@ -61,6 +66,18 @@ public class HandlerProvider {
         return new Http1FrontendHandler(master, context);
     }
 
+    public ChannelHandler wsBackendHandler() {
+        return new WebSocketBackendHandler(context);
+    }
+
+    public ChannelHandler wsFrontendHandler() {
+        return new WebSocketFrontendHandler(context);
+    }
+
+    public ChannelHandler wsEventHandler() {
+        return new WebSocketEventHandler(master, context);
+    }
+
     public ChannelHandler http1EventHandler() {
         return new Http1EventHandler(master, context);
     }
@@ -83,6 +100,14 @@ public class HandlerProvider {
 
     public ChannelHandler tlsBackendHandler() {
         return new TlsBackendHandler(master, context);
+    }
+
+    public ChannelHandler toClientHandler() {
+        return new ToClientHandler(context);
+    }
+
+    public ChannelHandler toServerHandler() {
+        return new ToServerHandler(context);
     }
 
     public ChannelHandler forwardFrontendHandler() {

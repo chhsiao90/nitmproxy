@@ -1,16 +1,7 @@
 package com.github.chhsiao90.nitmproxy.testing;
 
-import static io.netty.util.ReferenceCountUtil.release;
-import static java.util.stream.Collectors.toCollection;
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.ArrayDeque;
-import java.util.Queue;
-
-import org.assertj.core.api.AbstractIterableAssert;
-import org.assertj.core.api.ObjectAssert;
-import org.assertj.core.util.Streams;
-
+import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
@@ -20,6 +11,16 @@ import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.LastHttpContent;
+import org.assertj.core.api.AbstractIterableAssert;
+import org.assertj.core.api.ObjectAssert;
+import org.assertj.core.util.Streams;
+
+import java.util.ArrayDeque;
+import java.util.Queue;
+
+import static io.netty.util.ReferenceCountUtil.*;
+import static java.util.stream.Collectors.*;
+import static org.assertj.core.api.Assertions.*;
 
 public class ChannelMessagesAssert
     extends AbstractIterableAssert<ChannelMessagesAssert, Queue<Object>, Object, ObjectAssert<Object>> {
@@ -36,6 +37,22 @@ public class ChannelMessagesAssert
   protected ChannelMessagesAssert newAbstractIterableAssert(Iterable<?> iterable) {
     return new ChannelMessagesAssert(
         Streams.stream(iterable).collect(toCollection(ArrayDeque::new)));
+  }
+
+  public ChannelMessagesAssert has(Class<?> type) {
+    assertThat(actual).isNotEmpty();
+    assertThat(actual.peek()).isInstanceOf(type);
+    return this;
+  }
+
+  public ByteBufAssert hasByteBuf() {
+    has(ByteBuf.class);
+    return new ByteBufAssert((ByteBuf) actual.poll());
+  }
+
+  public Http2FrameWrapperAssert hasHttp2Frame() {
+    has(Http2FrameWrapper.class);
+    return new Http2FrameWrapperAssert((Http2FrameWrapper<?>) actual.poll());
   }
 
   public ResponseAssert hasResponse() {

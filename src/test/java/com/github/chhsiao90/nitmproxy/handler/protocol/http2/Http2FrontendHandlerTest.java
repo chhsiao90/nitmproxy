@@ -5,7 +5,7 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.HandlerProvider;
 import com.github.chhsiao90.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-import com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert;
+import com.github.chhsiao90.nitmproxy.handler.ToServerHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -38,13 +38,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FrameWrapper.*;
+import static com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert.*;
 import static io.netty.buffer.ByteBufUtil.*;
-import static io.netty.util.ReferenceCountUtil.*;
 import static java.util.concurrent.TimeUnit.*;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -64,7 +62,7 @@ public class Http2FrontendHandlerTest {
     private EmbeddedChannel targetChannel;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
 
@@ -81,6 +79,7 @@ public class Http2FrontendHandlerTest {
     @After
     public void tearDown() {
         targetChannel.finishAndReleaseAll();
+
         if (clientChannel != null) {
             clientChannel.close().syncUninterruptibly();
             clientChannel = null;
@@ -108,11 +107,10 @@ public class Http2FrontendHandlerTest {
         CountDownLatch latch = new CountDownLatch(1);
         targetChannel.pipeline().addLast(new ChannelOutboundHandlerAdapter() {
             @Override
-            public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
-                    throws Exception {
-                ctx.writeAndFlush(msg, promise);
+            public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
+                ctx.write(msg, promise);
                 if (isFrame(msg, Http2HeadersFrame.class)) {
-                    latch.countDown();
+                    promise.addListener(future -> latch.countDown());
                 }
             }
         });
@@ -124,14 +122,16 @@ public class Http2FrontendHandlerTest {
         });
 
         assertTrue(latch.await(DEFAULT_AWAIT_TIMEOUT_SECONDS, SECONDS));
-        EmbeddedChannelAssert.assertChannel(targetChannel).hasOutboundMessage().hasSize(2);
+        assertChannel(targetChannel).hasOutboundMessage().hasSize(2);
 
-        assertThat(targetChannel.outboundMessages().poll())
-                .isInstanceOf(Http2FrameWrapper.class)
-                .satisfies(wrapper -> assertThat(frame(wrapper)).isInstanceOf(Http2SettingsFrame.class));
-        assertThat(targetChannel.outboundMessages().poll())
-                .isInstanceOf(Http2FrameWrapper.class)
-                .satisfies(wrapper -> assertThat(frame(wrapper)).isInstanceOf(Http2HeadersFrame.class));
+        assertChannel(targetChannel)
+                .outbound()
+                .hasHttp2Frame()
+                .is(Http2SettingsFrame.class);
+        assertChannel(targetChannel)
+                .outbound()
+                .hasHttp2Frame()
+                .isHeadersFrame();
     }
 
     @Test
@@ -140,11 +140,10 @@ public class Http2FrontendHandlerTest {
         CountDownLatch latch = new CountDownLatch(1);
         targetChannel.pipeline().addLast(new ChannelOutboundHandlerAdapter() {
             @Override
-            public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
-                    throws Exception {
-                ctx.writeAndFlush(msg, promise);
+            public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) {
+                ctx.write(msg, promise);
                 if (isFrame(msg, Http2DataFrame.class)) {
-                    latch.countDown();
+                    promise.addListener(future -> latch.countDown());
                 }
             }
         });
@@ -158,20 +157,21 @@ public class Http2FrontendHandlerTest {
         });
 
         assertTrue(latch.await(DEFAULT_AWAIT_TIMEOUT_SECONDS, SECONDS));
-        EmbeddedChannelAssert.assertChannel(targetChannel).hasOutboundMessage().hasSize(3);
+        assertChannel(targetChannel).hasOutboundMessage().hasSize(3);
 
-        assertThat(targetChannel.outboundMessages().poll())
-                .isInstanceOf(Http2FrameWrapper.class)
-                .satisfies(wrapper -> assertThat(frame(wrapper)).isInstanceOf(Http2SettingsFrame.class));
-        assertThat(targetChannel.outboundMessages().poll())
-                .isInstanceOf(Http2FrameWrapper.class)
-                .satisfies(wrapper -> assertThat(frame(wrapper)).isInstanceOf(Http2HeadersFrame.class));
-        assertThat(targetChannel.outboundMessages().poll())
-                .isInstanceOf(Http2FrameWrapper.class)
-                .satisfies(wrapper -> {
-                    assertThat(frame(wrapper)).isInstanceOf(Http2DataFrame.class);
-                    release(wrapper);
-                });
+        assertChannel(targetChannel)
+                .outbound()
+                .hasHttp2Frame()
+                .is(Http2SettingsFrame.class);
+        assertChannel(targetChannel)
+                .outbound()
+                .hasHttp2Frame()
+                .isHeadersFrame();
+        assertChannel(targetChannel)
+                .outbound()
+                .hasHttp2Frame()
+                .isDataFrame()
+                .release();
     }
 
     private void bootstrapEnv() throws Exception {
@@ -179,18 +179,16 @@ public class Http2FrontendHandlerTest {
         sb = new ServerBootstrap();
         cb = new Bootstrap();
 
-        final AtomicReference<Http2FrontendHandler> serverHandlerRef = new AtomicReference<>();
         final CountDownLatch serverInitLatch = new CountDownLatch(1);
         sb.group(new DefaultEventLoopGroup());
         sb.channel(LocalServerChannel.class);
         sb.childHandler(new ChannelInitializer<Channel>() {
             @Override
-            protected void initChannel(Channel ch) throws Exception {
+            protected void initChannel(Channel ch) {
                 serverConnectedChannel = ch;
                 ChannelPipeline p = ch.pipeline();
 
-                serverHandlerRef.set(new Http2FrontendHandler(connectionContext));
-                p.addLast(serverHandlerRef.get());
+                p.addLast(new Http2FrontendHandler(connectionContext), new ToServerHandler(connectionContext));
                 serverInitLatch.countDown();
             }
         });
@@ -199,7 +197,7 @@ public class Http2FrontendHandlerTest {
         cb.channel(LocalChannel.class);
         cb.handler(new ChannelInitializer<Channel>() {
             @Override
-            protected void initChannel(Channel ch) throws Exception {
+            protected void initChannel(Channel ch) {
                 ChannelPipeline p = ch.pipeline();
                 connectionContext
                         .withClientAddr(new Address("localhost", 8080))
@@ -212,7 +210,7 @@ public class Http2FrontendHandlerTest {
                         .build());
                 p.addLast(new ChannelInboundHandlerAdapter() {
                     @Override
-                    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+                    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
                         if (evt instanceof Http2ConnectionPrefaceAndSettingsFrameWrittenEvent) {
                             prefaceWrittenLatch.countDown();
                             ctx.pipeline().remove(this);
