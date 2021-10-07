@@ -29,8 +29,8 @@ public class WebSocketFrontendHandler extends ChannelDuplexHandler {
     @Override
     public void handlerAdded(ChannelHandlerContext ctx) throws Exception {
         LOGGER.debug("{} : handlerAdded", connectionContext);
-        ctx.pipeline().addBefore(ctx.name(), null, new WebSocketServerCompressionHandler());
-        ctx.pipeline().addBefore(ctx.name(), null, connectionContext.provider().wsEventHandler());
+        ctx.pipeline().addAfter(ctx.name(), null, connectionContext.provider().wsEventHandler());
+        ctx.pipeline().addAfter(ctx.name(), null, new WebSocketServerCompressionHandler());
     }
 
     @Override
@@ -41,6 +41,7 @@ public class WebSocketFrontendHandler extends ChannelDuplexHandler {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof FullHttpRequest && isWebSocketUpgrade(((FullHttpRequest) msg).headers())) {
+            LOGGER.debug("{} : ws upgrading", connectionContext);
             FullHttpRequest request = (FullHttpRequest) msg;
             connectionContext.wsCtx().path(request.uri());
         }
@@ -64,14 +65,17 @@ public class WebSocketFrontendHandler extends ChannelDuplexHandler {
     }
 
     private void configProtocolUpgrade(ChannelHandlerContext ctx) {
-        LOGGER.debug("{} : web socket upgraded", connectionContext);
-        ChannelHandlerContext httpCtx = ctx.pipeline().context(Http1FrontendHandler.class);
-        ctx.pipeline().addBefore(httpCtx.name(), null, new WebSocket13FrameEncoder(false));
-        ctx.pipeline().addBefore(httpCtx.name(), null, new WebSocket13FrameDecoder(
+        LOGGER.debug("{} : ws upgraded", connectionContext);
+        ctx.pipeline().addBefore(ctx.name(), null, new WebSocket13FrameEncoder(false));
+        ctx.pipeline().addBefore(ctx.name(), null, new WebSocket13FrameDecoder(
                 WebSocketDecoderConfig.newBuilder()
                                       .allowExtensions(true)
                                       .allowMaskMismatch(true)
                                       .build()));
-        ctx.pipeline().remove(httpCtx.name());
+
+        ChannelHandlerContext httpCtx = ctx.pipeline().context(Http1FrontendHandler.class);
+        if (httpCtx != null) {
+            ctx.pipeline().remove(httpCtx.name());
+        }
     }
 }
