@@ -30,7 +30,7 @@ usage: nitmproxy [--cert <CERTIFICATE>] [--clientNoHttp2] [-h <HOST>] [-k]
 ### Support Protocol
 - HTTP/1
 - HTTP/2
-- WebSocket (WIP)
+- WebSocket
 - TLS
 
 ### Support Functionality
