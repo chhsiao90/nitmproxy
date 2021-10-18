@@ -4,7 +4,11 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.Channel;
 
 public class BackendChannelBootstrap {
     public ChannelFuture connect(ChannelHandlerContext fromCtx,
@@ -27,6 +31,5 @@ public class BackendChannelBootstrap {
         }
         return channelFuture;
     }
-
 
 }

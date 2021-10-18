@@ -56,7 +56,9 @@ public class NitmProxyConfig {
     /**
      * Handler for getting the created channel of the backend, i.e. the channel connecting to the actual target.
      * <p>
-     *     E.g. in Android this can be used to used to protect the channel <a href="https://developer.android.com/reference/android/net/VpnService#protect(int)">VpnService#protect(int)</a>
+     *     E.g. in Android this can be used to used to protect the channel
+     *     <a href="https://developer.android.com/reference/android/net/VpnService#protect(int)">
+     *         VpnService#protect(int)</a>
      * </p>
      */
     private Consumer<Channel> onConnectHandler;
