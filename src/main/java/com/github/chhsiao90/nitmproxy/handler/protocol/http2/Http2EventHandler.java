@@ -45,6 +45,7 @@ public class Http2EventHandler extends ChannelDuplexHandler {
         this.connectionContext = connectionContext;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
             throws Exception {
@@ -53,9 +54,11 @@ public class Http2EventHandler extends ChannelDuplexHandler {
             FrameCollector frameCollector = streams.computeIfAbsent(frameWrapper.streamId(), this::newFrameCollector);
             boolean streamEnded = false;
             if (Http2FrameWrapper.isFrame(msg, Http2HeadersFrame.class)) {
+                listener.onHttp2Response(connectionContext, (Http2FrameWrapper<Http2HeadersFrame>) msg);
                 streamEnded = frameCollector.onResponseHeadersFrame(frameWrapper.frame(Http2HeadersFrame.class));
             }
             if (Http2FrameWrapper.isFrame(msg, Http2DataFrame.class)) {
+                listener.onHttp2ResponseData(connectionContext, (Http2DataFrameWrapper) msg);
                 streamEnded = frameCollector.onResponseDataFrame(frameWrapper.frame(Http2DataFrame.class));
             }
             if (streamEnded) {
