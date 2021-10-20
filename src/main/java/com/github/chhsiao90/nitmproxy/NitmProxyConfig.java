@@ -3,8 +3,7 @@ package com.github.chhsiao90.nitmproxy;
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
 import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolDetector;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1ProtocolDetector;
-import com.github.chhsiao90.nitmproxy.listener.ForwardListener;
-import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider;
 import com.github.chhsiao90.nitmproxy.tls.UnsafeAccessSupport;
 import com.google.common.base.Joiner;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -43,8 +42,7 @@ public class NitmProxyConfig {
     private int maxContentLength;
 
     private NitmProxyStatusListener statusListener;
-    private List<HttpListener> httpListeners;
-    private List<ForwardListener> forwardListeners;
+    private List<NitmProxyListenerProvider> listeners;
 
     private TrustManager trustManager;
     private UnsafeAccessSupport unsafeAccessSupport = UnsafeAccessSupport.DENY;
@@ -63,8 +61,7 @@ public class NitmProxyConfig {
 
         maxContentLength = 1024 * 1024;
 
-        httpListeners = new ArrayList<>();
-        forwardListeners = new ArrayList<>();
+        listeners = new ArrayList<>();
         detectors = Collections.singletonList(Http1ProtocolDetector.INSTANCE);
     }
 
@@ -173,20 +170,12 @@ public class NitmProxyConfig {
         this.statusListener = statusListener;
     }
 
-    public List<HttpListener> getHttpListeners() {
-        return httpListeners;
+    public List<NitmProxyListenerProvider> getListeners() {
+        return listeners;
     }
 
-    public void setHttpListeners(List<HttpListener> httpListeners) {
-        this.httpListeners = httpListeners;
-    }
-
-    public List<ForwardListener> getForwardListeners() {
-        return forwardListeners;
-    }
-
-    public void setForwardListeners(List<ForwardListener> forwardListeners) {
-        this.forwardListeners = forwardListeners;
+    public void setListeners(List<NitmProxyListenerProvider> listeners) {
+        this.listeners = listeners;
     }
 
     public UnsafeAccessSupport getUnsafeAccessSupport() {

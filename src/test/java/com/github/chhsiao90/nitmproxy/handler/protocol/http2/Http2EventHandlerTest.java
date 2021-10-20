@@ -4,7 +4,7 @@ import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
-import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import com.google.common.collect.ImmutableList;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.HttpVersion;
@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpUtil.*;
+import static com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider.*;
 import static com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert.*;
 import static io.netty.handler.codec.http.HttpHeaderValues.*;
 import static io.netty.handler.codec.http.HttpMethod.*;
@@ -30,14 +31,14 @@ import static org.mockito.Mockito.*;
 
 public class Http2EventHandlerTest {
 
-    private HttpListener listener;
+    private NitmProxyListener listener;
     private EmbeddedChannel channel;
 
     @Before
     public void setUp() {
-        listener = mock(HttpListener.class);
+        listener = mock(NitmProxyListener.class);
         NitmProxyMaster master = mock(NitmProxyMaster.class);
-        when(master.httpEventListener()).thenReturn(listener);
+        when(master.createListener()).thenReturn(listener);
 
         ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(new Address("localhost", 8080))

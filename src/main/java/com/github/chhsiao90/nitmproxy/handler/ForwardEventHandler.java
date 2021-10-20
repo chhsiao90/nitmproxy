@@ -3,17 +3,17 @@ package com.github.chhsiao90.nitmproxy.handler;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.ForwardEvent;
-import com.github.chhsiao90.nitmproxy.listener.ForwardListener;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 
-import static java.lang.System.currentTimeMillis;
+import static java.lang.System.*;
 
 public class ForwardEventHandler extends ChannelDuplexHandler {
 
-    private ForwardListener listener;
+    private NitmProxyListener listener;
     private ConnectionContext connectionContext;
 
     private long requestTime;
@@ -28,7 +28,7 @@ public class ForwardEventHandler extends ChannelDuplexHandler {
     public ForwardEventHandler(
             NitmProxyMaster master,
             ConnectionContext connectionContext) {
-        this.listener = master.forwardEventListener();
+        this.listener = master.createListener();
         this.connectionContext = connectionContext;
     }
 
@@ -62,7 +62,7 @@ public class ForwardEventHandler extends ChannelDuplexHandler {
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        ctx.fireChannelInactive();
+    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+        listener.close(connectionContext);
     }
 }

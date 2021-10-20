@@ -4,7 +4,7 @@ import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
-import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import com.google.common.collect.ImmutableList;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.DefaultHttpContent;
@@ -35,14 +35,14 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class Http1EventHandlerTest {
-    private HttpListener listener;
+    private NitmProxyListener listener;
     private EmbeddedChannel channel;
 
     @Before
     public void setUp() {
-        listener = mock(HttpListener.class);
+        listener = mock(NitmProxyListener.class);
         NitmProxyMaster master = mock(NitmProxyMaster.class);
-        when(master.httpEventListener()).thenReturn(listener);
+        when(master.createListener()).thenReturn(listener);
 
         ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(new Address("localhost", 8080))

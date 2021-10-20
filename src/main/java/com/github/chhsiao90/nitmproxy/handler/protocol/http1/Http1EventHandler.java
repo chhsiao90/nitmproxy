@@ -3,7 +3,7 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.http1;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
-import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -15,7 +15,6 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.util.concurrent.PromiseCombiner;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
@@ -30,7 +29,7 @@ import static java.lang.System.*;
 
 public class Http1EventHandler extends ChannelDuplexHandler {
 
-    private HttpListener listener;
+    private NitmProxyListener listener;
     private ConnectionContext connectionContext;
 
     private long requestTime;
@@ -44,10 +43,8 @@ public class Http1EventHandler extends ChannelDuplexHandler {
      * @param master            the master
      * @param connectionContext the connection context
      */
-    public Http1EventHandler(
-            NitmProxyMaster master,
-            ConnectionContext connectionContext) {
-        this.listener = master.httpEventListener();
+    public Http1EventHandler(NitmProxyMaster master, ConnectionContext connectionContext) {
+        this.listener = master.createListener();
         this.connectionContext = connectionContext;
         this.requests = new ConcurrentLinkedQueue<>();
     }
@@ -155,5 +152,6 @@ public class Http1EventHandler extends ChannelDuplexHandler {
     public void handlerRemoved(ChannelHandlerContext ctx) {
         requests.forEach(FullHttpRequest::release);
         release(response);
+        listener.close(connectionContext);
     }
 }

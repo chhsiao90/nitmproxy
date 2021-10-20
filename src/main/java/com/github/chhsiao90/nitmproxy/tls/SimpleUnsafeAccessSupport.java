@@ -3,7 +3,7 @@ package com.github.chhsiao90.nitmproxy.tls;
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FramesWrapper;
-import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import com.google.common.io.Resources;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -57,11 +57,11 @@ public class SimpleUnsafeAccessSupport implements UnsafeAccessSupport {
         return UnsafeAccessSupportTrustManagerFactory.create(delegate, this, context);
     }
 
-    public HttpListener getInterceptor() {
+    public NitmProxyListener getInterceptor() {
         return interceptor;
     }
 
-    class Interceptor implements HttpListener {
+    class Interceptor implements NitmProxyListener {
         @Override
         public Optional<FullHttpResponse> onHttp1Request(ConnectionContext connectionContext, FullHttpRequest request) {
             if (connectionContext.getServerAddr() == null || !accepted.containsKey(connectionContext.getServerAddr())) {

@@ -2,7 +2,7 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.ws;
 
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -10,7 +10,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 
 public class WebSocketEventHandler extends ChannelDuplexHandler {
 
-    private HttpListener listener;
+    private NitmProxyListener listener;
     private ConnectionContext connectionContext;
 
     /**
@@ -22,7 +22,7 @@ public class WebSocketEventHandler extends ChannelDuplexHandler {
     public WebSocketEventHandler(
             NitmProxyMaster master,
             ConnectionContext connectionContext) {
-        this.listener = master.httpEventListener();
+        this.listener = master.createListener();
         this.connectionContext = connectionContext;
     }
 
@@ -41,5 +41,10 @@ public class WebSocketEventHandler extends ChannelDuplexHandler {
             listener.onSendingWsFrame(connectionContext, (WebSocketFrame) msg);
         }
         ctx.fireChannelRead(msg);
+    }
+
+    @Override
+    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
+        listener.close(connectionContext);
     }
 }

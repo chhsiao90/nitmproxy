@@ -73,7 +73,7 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (!(msg instanceof FullHttpRequest)) {
             ctx.fireChannelRead(msg);
             return;
@@ -93,14 +93,13 @@ public class Http1FrontendHandler extends ChannelDuplexHandler {
     }
 
     @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        super.userEventTriggered(ctx, evt);
         if (evt instanceof OutboundChannelClosedEvent) {
             if (tunneled) {
                 ctx.close();
             }
         }
-
-        ctx.fireUserEventTriggered(evt);
     }
 
     private void handleTunnelProxyConnection(ChannelHandlerContext ctx, FullHttpRequest request) {

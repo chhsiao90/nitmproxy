@@ -18,44 +18,36 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-public class NitmProxyListenerManager implements HttpListener, ForwardListener {
+public class NitmProxyListenerManager implements NitmProxyListener {
 
-    private final List<HttpListener> httpListeners;
-    private final List<HttpListener> reversedHttpListeners;
-    private final List<ForwardListener> forwardListeners;
-    private final List<ForwardListener> reversedForwardListeners;
+    private final List<NitmProxyListener> listeners;
+    private final List<NitmProxyListener> reversedListeners;
 
-    public NitmProxyListenerManager(List<HttpListener> httpListeners,
-                                    List<ForwardListener> forwardListeners) {
-        this.httpListeners = ImmutableList.<HttpListener>builder()
+    public NitmProxyListenerManager(List<NitmProxyListener> listeners) {
+        this.listeners = ImmutableList.<NitmProxyListener>builder()
                                           .add(new HttpEventLogger())
-                                          .addAll(httpListeners)
+                                          .addAll(listeners)
                                           .build();
-        this.reversedHttpListeners = Lists.reverse(this.httpListeners);
-        this.forwardListeners = ImmutableList.<ForwardListener>builder()
-                                             .add(new ForwardEventLogger())
-                                             .addAll(forwardListeners)
-                                             .build();
-        this.reversedForwardListeners = Lists.reverse(this.forwardListeners);
+        this.reversedListeners = Lists.reverse(this.listeners);
     }
 
     @Override
     public void onHttpEvent(HttpEvent event) {
-        httpListeners.forEach(listener -> listener.onHttpEvent(event));
+        listeners.forEach(listener -> listener.onHttpEvent(event));
     }
 
     @Override
     public Optional<FullHttpResponse> onHttp1Request(ConnectionContext connectionContext, FullHttpRequest request) {
-        Function<HttpListener, Stream<FullHttpResponse>> apply = listener -> listener.onHttp1Request(connectionContext,
-                request)
+        Function<NitmProxyListener, Stream<FullHttpResponse>> apply = listener -> listener
+                .onHttp1Request(connectionContext, request)
                 .map(Stream::of)
                 .orElse(Stream.empty());
-        return httpListeners.stream().flatMap(apply).findFirst();
+        return listeners.stream().flatMap(apply).findFirst();
     }
 
     @Override
     public List<HttpObject> onHttp1Response(ConnectionContext connectionContext, HttpObject response) {
-        return reversedHttpListeners.stream()
+        return reversedListeners.stream()
                 .reduce(ImmutableList.of(response),
                     (objects, listener) -> objects.stream()
                             .flatMap(f -> listener.onHttp1Response(connectionContext, f).stream())
@@ -66,16 +58,16 @@ public class NitmProxyListenerManager implements HttpListener, ForwardListener {
     @Override
     public Optional<Http2FramesWrapper> onHttp2Request(ConnectionContext connectionContext,
                                                        Http2FramesWrapper request) {
-        Function<HttpListener, Stream<Http2FramesWrapper>> apply = listener -> listener
+        Function<NitmProxyListener, Stream<Http2FramesWrapper>> apply = listener -> listener
                 .onHttp2Request(connectionContext, request)
                 .map(Stream::of)
                 .orElse(Stream.empty());
-        return httpListeners.stream().flatMap(apply).findFirst();
+        return listeners.stream().flatMap(apply).findFirst();
     }
 
     @Override
     public List<Http2FrameWrapper<?>> onHttp2Response(ConnectionContext connectionContext, Http2FrameWrapper<?> frame) {
-        return reversedHttpListeners.stream()
+        return reversedListeners.stream()
                 .reduce(ImmutableList.of(frame),
                     (frames, listener) -> frames.stream()
                             .flatMap(f -> listener.onHttp2Response(connectionContext, f).stream())
@@ -85,26 +77,26 @@ public class NitmProxyListenerManager implements HttpListener, ForwardListener {
 
     @Override
     public void onSendingWsFrame(ConnectionContext connectionContext, WebSocketFrame frame) {
-        httpListeners.forEach(listener -> listener.onSendingWsFrame(connectionContext, frame));
+        listeners.forEach(listener -> listener.onSendingWsFrame(connectionContext, frame));
     }
 
     @Override
     public void onReceivingWsFrame(ConnectionContext connectionContext, WebSocketFrame frame) {
-        reversedHttpListeners.forEach(listener -> listener.onReceivingWsFrame(connectionContext, frame));
+        listeners.forEach(listener -> listener.onReceivingWsFrame(connectionContext, frame));
     }
 
     @Override
     public void onForwardEvent(ConnectionContext connectionContext, ForwardEvent event) {
-        forwardListeners.forEach(listener -> listener.onForwardEvent(connectionContext, event));
+        listeners.forEach(listener -> listener.onForwardEvent(connectionContext, event));
     }
 
     @Override
     public void onForwardRequest(ConnectionContext connectionContext, ByteBuf byteBuf) {
-        forwardListeners.forEach(listener -> listener.onForwardRequest(connectionContext, byteBuf));
+        listeners.forEach(listener -> listener.onForwardRequest(connectionContext, byteBuf));
     }
 
     @Override
     public void onForwardResponse(ConnectionContext connectionContext, ByteBuf byteBuf) {
-        reversedForwardListeners.forEach(listener -> listener.onForwardResponse(connectionContext, byteBuf));
+        reversedListeners.forEach(listener -> listener.onForwardResponse(connectionContext, byteBuf));
     }
 }
