@@ -5,10 +5,12 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.google.common.collect.ImmutableList;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpResponse;
 import org.assertj.core.data.Offset;
 import org.junit.After;
@@ -57,6 +59,10 @@ public class Http1EventHandlerTest {
     @Test
     public void shouldLogWithFullResponse() {
         when(listener.onHttp1Request(any(), any())).thenReturn(Optional.empty());
+        when(listener.onHttp1Response(any(), any())).thenAnswer(invocation -> {
+            HttpObject httpObject = (HttpObject) invocation.getArguments()[1];
+            return ImmutableList.of(httpObject);
+        });
 
         assertTrue(channel.writeInbound(defaultRequest()));
         assertTrue(channel.writeOutbound(defaultResponse("Hello Nitmproxy")));
@@ -81,6 +87,10 @@ public class Http1EventHandlerTest {
     @Test
     public void shouldLogWithResponseAndContent() {
         when(listener.onHttp1Request(any(), any())).thenReturn(Optional.empty());
+        when(listener.onHttp1Response(any(), any())).thenAnswer(invocation -> {
+            HttpObject httpObject = (HttpObject) invocation.getArguments()[1];
+            return ImmutableList.of(httpObject);
+        });
 
         HttpResponse response = new DefaultHttpResponse(HTTP_1_1, OK);
         response.headers()
@@ -137,6 +147,11 @@ public class Http1EventHandlerTest {
 
     @Test
     public void shouldPipeRequests() {
+        when(listener.onHttp1Response(any(), any())).thenAnswer(invocation -> {
+            HttpObject httpObject = (HttpObject) invocation.getArguments()[1];
+            return ImmutableList.of(httpObject);
+        });
+
         assertTrue(channel.writeInbound(request(HTTP_1_1, GET, "localhost", "/first")));
         assertTrue(channel.writeInbound(request(HTTP_1_1, GET, "localhost", "/second")));
         assertTrue(channel.writeOutbound(defaultResponse("First Response")));

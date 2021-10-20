@@ -5,6 +5,7 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.google.common.collect.ImmutableList;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
@@ -71,6 +72,10 @@ public class Http2EventHandlerTest {
     @Test
     public void shouldLogWithFullResponse() {
         when(listener.onHttp2Request(any(), any())).thenReturn(Optional.empty());
+        when(listener.onHttp2Response(any(), any())).thenAnswer(invocation -> {
+            Http2FrameWrapper<?> frame = (Http2FrameWrapper<?>) invocation.getArguments()[1];
+            return ImmutableList.of(frame);
+        });
 
         Http2FramesWrapper
                 .builder(1)

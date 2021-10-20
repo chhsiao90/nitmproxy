@@ -86,7 +86,8 @@ public class Http1BackendHandlerTest {
         assertChannel(channel)
                 .hasOutboundMessage()
                 .hasByteBuf()
-                .hasContent("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n");
+                .hasContent("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                .release();
 
         // Second response
         assertTrue(channel.writeInbound(defaultResponse("test")));
