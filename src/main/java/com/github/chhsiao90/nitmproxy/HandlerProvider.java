@@ -4,8 +4,8 @@ import com.github.chhsiao90.nitmproxy.exception.NitmProxyException;
 import com.github.chhsiao90.nitmproxy.handler.ForwardBackendHandler;
 import com.github.chhsiao90.nitmproxy.handler.ForwardEventHandler;
 import com.github.chhsiao90.nitmproxy.handler.ForwardFrontendHandler;
+import com.github.chhsiao90.nitmproxy.handler.TailFrontendHandler;
 import com.github.chhsiao90.nitmproxy.handler.ToClientHandler;
-import com.github.chhsiao90.nitmproxy.handler.ToServerHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolSelectHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1BackendHandler;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1EventHandler;
@@ -75,11 +75,11 @@ public class HandlerProvider {
     }
 
     public ChannelHandler wsEventHandler() {
-        return new WebSocketEventHandler(master, context);
+        return new WebSocketEventHandler(context);
     }
 
     public ChannelHandler http1EventHandler() {
-        return new Http1EventHandler(master, context);
+        return new Http1EventHandler(context);
     }
 
     public ChannelHandler http2BackendHandler() {
@@ -91,7 +91,7 @@ public class HandlerProvider {
     }
 
     public ChannelHandler http2EventHandler() {
-        return new Http2EventHandler(master, context);
+        return new Http2EventHandler(context);
     }
 
     public ChannelHandler tlsFrontendHandler() {
@@ -107,7 +107,7 @@ public class HandlerProvider {
     }
 
     public ChannelHandler toServerHandler() {
-        return new ToServerHandler(context);
+        return new TailFrontendHandler(context);
     }
 
     public ChannelHandler forwardFrontendHandler() {
@@ -119,6 +119,6 @@ public class HandlerProvider {
     }
 
     public ChannelHandler forwardEventHandler() {
-        return new ForwardEventHandler(master, context);
+        return new ForwardEventHandler(context);
     }
 }

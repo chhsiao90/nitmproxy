@@ -1,7 +1,6 @@
 package com.github.chhsiao90.nitmproxy.handler.protocol.http1;
 
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
-import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import io.netty.channel.ChannelDuplexHandler;
@@ -40,12 +39,11 @@ public class Http1EventHandler extends ChannelDuplexHandler {
     /**
      * Create new instance of http1 event handler.
      *
-     * @param master            the master
      * @param connectionContext the connection context
      */
-    public Http1EventHandler(NitmProxyMaster master, ConnectionContext connectionContext) {
-        this.listener = master.createListener();
+    public Http1EventHandler(ConnectionContext connectionContext) {
         this.connectionContext = connectionContext;
+        this.listener = connectionContext.listener();
         this.requests = new ConcurrentLinkedQueue<>();
     }
 
@@ -152,6 +150,5 @@ public class Http1EventHandler extends ChannelDuplexHandler {
     public void handlerRemoved(ChannelHandlerContext ctx) {
         requests.forEach(FullHttpRequest::release);
         release(response);
-        listener.close(connectionContext);
     }
 }

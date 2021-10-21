@@ -1,7 +1,6 @@
 package com.github.chhsiao90.nitmproxy;
 
 import com.github.chhsiao90.nitmproxy.channel.BackendChannelBootstrap;
-import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerManagerProvider;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider;
 import com.github.chhsiao90.nitmproxy.tls.CertManager;
@@ -32,8 +31,8 @@ public class NitmProxyMaster {
         return new HandlerProvider(this, context);
     }
 
-    public NitmProxyListener createListener() {
-        return listenerProvider.create();
+    public NitmProxyListenerProvider listenerProvider() {
+        return listenerProvider;
     }
 
     public CertManager certManager() {

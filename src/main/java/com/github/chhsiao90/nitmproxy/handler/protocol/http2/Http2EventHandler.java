@@ -1,7 +1,6 @@
 package com.github.chhsiao90.nitmproxy.handler.protocol.http2;
 
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
-import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.http.HttpUtil;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
@@ -36,12 +35,11 @@ public class Http2EventHandler extends ChannelDuplexHandler {
     /**
      * Create new instance of http1 event handler.
      *
-     * @param master            the master
      * @param connectionContext the connection context
      */
-    public Http2EventHandler(NitmProxyMaster master, ConnectionContext connectionContext) {
-        this.listener = master.createListener();
+    public Http2EventHandler(ConnectionContext connectionContext) {
         this.connectionContext = connectionContext;
+        this.listener = connectionContext.listener();
     }
 
     @Override
@@ -123,7 +121,6 @@ public class Http2EventHandler extends ChannelDuplexHandler {
     @Override
     public void handlerRemoved(ChannelHandlerContext ctx) {
         streams.values().forEach(FrameCollector::release);
-        listener.close(connectionContext);
     }
 
     private FrameCollector newFrameCollector(int streamId) {

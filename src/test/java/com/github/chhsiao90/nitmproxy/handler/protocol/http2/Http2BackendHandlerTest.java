@@ -21,6 +21,7 @@ import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 
 import java.util.concurrent.CountDownLatch;
 
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,6 +70,7 @@ public class Http2BackendHandlerTest {
     public void setUp() throws Exception {
         NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
+        when(master.listenerProvider()).thenReturn(NitmProxyListenerProvider.empty());
         connectionContext = new ConnectionContext(master);
 
         serverListener = mock(Http2FrameListener.class);

@@ -5,6 +5,7 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.HandlerProvider;
 import com.github.chhsiao90.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider;
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.embedded.EmbeddedChannel;
 import org.junit.After;
@@ -30,6 +31,7 @@ public class Http1BackendHandlerTest {
         NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
         when(master.provider(any())).thenReturn(provider);
+        when(master.listenerProvider()).thenReturn(NitmProxyListenerProvider.empty());
 
         channel = new EmbeddedChannel();
 

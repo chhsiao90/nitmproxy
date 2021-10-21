@@ -3,6 +3,7 @@ package com.github.chhsiao90.nitmproxy;
 import com.github.chhsiao90.nitmproxy.handler.proxy.HttpProxyHandler;
 import com.github.chhsiao90.nitmproxy.handler.proxy.SocksProxyHandler;
 import com.github.chhsiao90.nitmproxy.handler.proxy.TransparentProxyHandler;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import com.github.chhsiao90.nitmproxy.tls.TlsContext;
 import com.github.chhsiao90.nitmproxy.ws.WebSocketContext;
 import io.netty.channel.Channel;
@@ -27,11 +28,14 @@ public class ConnectionContext {
     private TlsContext tlsCtx;
     private WebSocketContext wsCtx;
 
+    private NitmProxyListener listener;
+
     public ConnectionContext(NitmProxyMaster master) {
         this.master = master;
         this.provider = master.provider(this);
         this.tlsCtx = new TlsContext();
         this.wsCtx = new WebSocketContext();
+        this.listener = master.listenerProvider().create();
     }
 
     public ConnectionContext withClientAddr(Address clientAddr) {
@@ -125,6 +129,14 @@ public class ConnectionContext {
 
     public WebSocketContext wsCtx() {
         return wsCtx;
+    }
+
+    public NitmProxyListener listener() {
+        return listener;
+    }
+
+    public void close() {
+        listener.close(this);
     }
 
     @Override

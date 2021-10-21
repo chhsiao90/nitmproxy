@@ -21,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import java.util.Optional;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpUtil.*;
+import static com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider.*;
 import static com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert.*;
 import static com.google.common.net.HttpHeaders.*;
 import static io.netty.buffer.Unpooled.*;
@@ -42,12 +43,12 @@ public class Http1EventHandlerTest {
     public void setUp() {
         listener = mock(NitmProxyListener.class);
         NitmProxyMaster master = mock(NitmProxyMaster.class);
-        when(master.createListener()).thenReturn(listener);
+        when(master.listenerProvider()).thenReturn(singleton(listener));
 
         ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(new Address("localhost", 8080))
                 .withClientChannel(channel);
-        Http1EventHandler handler = new Http1EventHandler(master, context);
+        Http1EventHandler handler = new Http1EventHandler(context);
         channel = new EmbeddedChannel(handler);
     }
 

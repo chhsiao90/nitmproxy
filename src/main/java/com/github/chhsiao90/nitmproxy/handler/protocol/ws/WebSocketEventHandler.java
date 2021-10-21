@@ -16,14 +16,11 @@ public class WebSocketEventHandler extends ChannelDuplexHandler {
     /**
      * Create new instance of web socket event handler.
      *
-     * @param master            the master
      * @param connectionContext the connection context
      */
-    public WebSocketEventHandler(
-            NitmProxyMaster master,
-            ConnectionContext connectionContext) {
-        this.listener = master.createListener();
+    public WebSocketEventHandler(ConnectionContext connectionContext) {
         this.connectionContext = connectionContext;
+        this.listener = connectionContext.listener();
     }
 
     @Override

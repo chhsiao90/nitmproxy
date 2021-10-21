@@ -38,12 +38,12 @@ public class Http2EventHandlerTest {
     public void setUp() {
         listener = mock(NitmProxyListener.class);
         NitmProxyMaster master = mock(NitmProxyMaster.class);
-        when(master.createListener()).thenReturn(listener);
+        when(master.listenerProvider()).thenReturn(singleton(listener));
 
         ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(new Address("localhost", 8080))
                 .withClientChannel(channel);
-        Http2EventHandler handler = new Http2EventHandler(master, context);
+        Http2EventHandler handler = new Http2EventHandler(context);
         channel = new EmbeddedChannel(handler);
     }
 

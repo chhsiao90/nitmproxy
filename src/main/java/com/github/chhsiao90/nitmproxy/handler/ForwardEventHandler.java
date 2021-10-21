@@ -1,7 +1,6 @@
 package com.github.chhsiao90.nitmproxy.handler;
 
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
-import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.ForwardEvent;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import io.netty.buffer.ByteBuf;
@@ -22,14 +21,11 @@ public class ForwardEventHandler extends ChannelDuplexHandler {
     /**
      * Create new instance of http1 event handler.
      *
-     * @param master            the master
      * @param connectionContext the connection context
      */
-    public ForwardEventHandler(
-            NitmProxyMaster master,
-            ConnectionContext connectionContext) {
-        this.listener = master.createListener();
+    public ForwardEventHandler(ConnectionContext connectionContext) {
         this.connectionContext = connectionContext;
+        this.listener = connectionContext.listener();
     }
 
     @Override
@@ -59,10 +55,5 @@ public class ForwardEventHandler extends ChannelDuplexHandler {
         requestBytes = byteBuf.readableBytes();
         requestTime = currentTimeMillis();
         super.channelRead(ctx, msg);
-    }
-
-    @Override
-    public void handlerRemoved(ChannelHandlerContext ctx) throws Exception {
-        listener.close(connectionContext);
     }
 }

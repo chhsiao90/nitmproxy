@@ -55,4 +55,7 @@ public interface NitmProxyListener {
 
     default void close(ConnectionContext connectionContext) {
     }
+
+    class Empty implements NitmProxyListener {
+    }
 }

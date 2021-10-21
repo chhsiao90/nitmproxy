@@ -5,7 +5,8 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.HandlerProvider;
 import com.github.chhsiao90.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
-import com.github.chhsiao90.nitmproxy.handler.ToServerHandler;
+import com.github.chhsiao90.nitmproxy.handler.TailFrontendHandler;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -65,6 +66,7 @@ public class Http2FrontendHandlerTest {
     public void setUp() {
         NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
+        when(master.listenerProvider()).thenReturn(NitmProxyListenerProvider.empty());
 
         HandlerProvider provider = mock(HandlerProvider.class);
         when(master.provider(any())).thenReturn(provider);
@@ -188,7 +190,7 @@ public class Http2FrontendHandlerTest {
                 serverConnectedChannel = ch;
                 ChannelPipeline p = ch.pipeline();
 
-                p.addLast(new Http2FrontendHandler(connectionContext), new ToServerHandler(connectionContext));
+                p.addLast(new Http2FrontendHandler(connectionContext), new TailFrontendHandler(connectionContext));
                 serverInitLatch.countDown();
             }
         });
