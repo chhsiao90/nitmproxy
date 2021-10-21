@@ -8,6 +8,7 @@ import com.github.chhsiao90.nitmproxy.handler.protocol.http2.Http2FramesWrapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpObject;
@@ -29,6 +30,16 @@ public class NitmProxyListenerManager implements NitmProxyListener {
                                           .addAll(listeners)
                                           .build();
         this.reversedListeners = Lists.reverse(this.listeners);
+    }
+
+    @Override
+    public void onInit(ConnectionContext connectionContext, Channel clientChannel) {
+        listeners.forEach(listener -> listener.onInit(connectionContext, clientChannel));
+    }
+
+    @Override
+    public void onConnect(ConnectionContext connectionContext, Channel serverChannel) {
+        listeners.forEach(listener -> listener.onConnect(connectionContext, serverChannel));
     }
 
     @Override
@@ -98,5 +109,10 @@ public class NitmProxyListenerManager implements NitmProxyListener {
     @Override
     public void onForwardResponse(ConnectionContext connectionContext, ByteBuf byteBuf) {
         reversedListeners.forEach(listener -> listener.onForwardResponse(connectionContext, byteBuf));
+    }
+
+    @Override
+    public void close(ConnectionContext connectionContext) {
+        reversedListeners.forEach(listener -> listener.close(connectionContext));
     }
 }
