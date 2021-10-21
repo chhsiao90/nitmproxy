@@ -29,7 +29,8 @@ public class NitmProxyInitializer extends ChannelInitializer<Channel> {
 
         ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(clientAddress)
-                .withClientChannel(channel);
+                .withClientChannel(channel)
+                .withAlloc(channel.alloc());
         context.listener().onInit(context, channel);
 
         LOGGER.debug("{} : connection init", context);

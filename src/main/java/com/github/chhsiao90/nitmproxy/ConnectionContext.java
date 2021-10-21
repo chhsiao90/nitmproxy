@@ -6,6 +6,7 @@ import com.github.chhsiao90.nitmproxy.handler.proxy.TransparentProxyHandler;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import com.github.chhsiao90.nitmproxy.tls.TlsContext;
 import com.github.chhsiao90.nitmproxy.ws.WebSocketContext;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
@@ -18,6 +19,9 @@ public class ConnectionContext {
 
     private NitmProxyMaster master;
     private HandlerProvider provider;
+    private NitmProxyListener listener;
+
+    private ByteBufAllocator alloc;
 
     private Address clientAddr;
     private Address serverAddr;
@@ -27,8 +31,6 @@ public class ConnectionContext {
 
     private TlsContext tlsCtx;
     private WebSocketContext wsCtx;
-
-    private NitmProxyListener listener;
 
     public ConnectionContext(NitmProxyMaster master) {
         this.master = master;
@@ -64,6 +66,15 @@ public class ConnectionContext {
     public ConnectionContext withServerChannel(Channel serverChannel) {
         this.serverChannel = serverChannel;
         return this;
+    }
+
+    public ConnectionContext withAlloc(ByteBufAllocator alloc) {
+        this.alloc = alloc;
+        return this;
+    }
+
+    public ByteBufAllocator alloc() {
+        return alloc;
     }
 
     public NitmProxyMaster master() {
