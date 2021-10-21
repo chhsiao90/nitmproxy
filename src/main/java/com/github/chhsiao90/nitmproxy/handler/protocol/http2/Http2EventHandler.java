@@ -55,6 +55,7 @@ public class Http2EventHandler extends ChannelDuplexHandler {
         List<Http2FrameWrapper<?>> output = listener.onHttp2Response(connectionContext, frameWrapper);
         boolean streamEnded = output.stream()
                 .map(wrapper -> frameCollector.onResponseFrame(wrapper.frame()))
+                .filter(Boolean::booleanValue)
                 .findFirst()
                 .orElse(false);
         writeFrames(ctx, output, promise);
