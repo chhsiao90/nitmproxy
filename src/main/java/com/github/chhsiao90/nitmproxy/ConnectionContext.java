@@ -109,8 +109,11 @@ public class ConnectionContext {
         serverAddr = address;
         return master.connect(fromCtx, this, new ChannelInitializer<Channel>() {
             @Override
-            protected void initChannel(Channel ch) throws Exception {
-                ch.pipeline().addLast(withServerChannel(ch).provider().tlsBackendHandler());
+            protected void initChannel(Channel ch) {
+                withServerChannel(ch);
+                ch.pipeline().addLast(provider().tlsBackendHandler());
+                ch.pipeline().addLast(provider().tailBackendHandler());
+                listener().onConnect(ConnectionContext.this, ch);
             }
         });
     }

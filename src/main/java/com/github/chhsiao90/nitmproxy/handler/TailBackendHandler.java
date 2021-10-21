@@ -4,11 +4,11 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
-public class ToClientHandler extends ChannelInboundHandlerAdapter {
+public class TailBackendHandler extends ChannelInboundHandlerAdapter {
 
     private ConnectionContext connectionContext;
 
-    public ToClientHandler(ConnectionContext connectionContext) {
+    public TailBackendHandler(ConnectionContext connectionContext) {
         this.connectionContext = connectionContext;
     }
 

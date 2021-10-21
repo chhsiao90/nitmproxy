@@ -26,13 +26,15 @@ public class NitmProxyInitializer extends ChannelInitializer<Channel> {
     protected void initChannel(Channel channel) {
         InetSocketAddress address = (InetSocketAddress) channel.remoteAddress();
         Address clientAddress = new Address(address.getHostName(), address.getPort());
+
         ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(clientAddress)
                 .withClientChannel(channel);
+        context.listener().onInit(context, channel);
 
         LOGGER.debug("{} : connection init", context);
 
         channel.pipeline().replace(this, null, context.proxyHandler());
-        channel.pipeline().addLast(context.provider().toServerHandler());
+        channel.pipeline().addLast(context.provider().tailFrontendHandler());
     }
 }

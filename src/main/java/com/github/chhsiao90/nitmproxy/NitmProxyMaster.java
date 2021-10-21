@@ -41,6 +41,6 @@ public class NitmProxyMaster {
 
     public ChannelFuture connect(ChannelHandlerContext fromCtx, ConnectionContext connectionContext,
                                  ChannelHandler handler) {
-        return backendChannelBootstrap.connect(fromCtx, this, connectionContext, handler);
+        return backendChannelBootstrap.connect(fromCtx, connectionContext, handler);
     }
 }

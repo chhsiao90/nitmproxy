@@ -26,7 +26,7 @@ public class Http1BackendHandlerTest {
     public void setUp() {
         HandlerProvider provider = mock(HandlerProvider.class);
         when(provider.wsBackendHandler()).thenReturn(new ChannelHandlerAdapter() {});
-        when(provider.toClientHandler()).thenReturn(new ChannelHandlerAdapter() {});
+        when(provider.tailBackendHandler()).thenReturn(new ChannelHandlerAdapter() {});
 
         NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.config()).thenReturn(new NitmProxyConfig());

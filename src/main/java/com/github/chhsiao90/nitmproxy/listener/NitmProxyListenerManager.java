@@ -76,13 +76,13 @@ public class NitmProxyListenerManager implements NitmProxyListener {
     }
 
     @Override
-    public void onSendingWsFrame(ConnectionContext connectionContext, WebSocketFrame frame) {
-        listeners.forEach(listener -> listener.onSendingWsFrame(connectionContext, frame));
+    public void onWsRequest(ConnectionContext connectionContext, WebSocketFrame frame) {
+        listeners.forEach(listener -> listener.onWsRequest(connectionContext, frame));
     }
 
     @Override
-    public void onReceivingWsFrame(ConnectionContext connectionContext, WebSocketFrame frame) {
-        listeners.forEach(listener -> listener.onReceivingWsFrame(connectionContext, frame));
+    public void onWsResponse(ConnectionContext connectionContext, WebSocketFrame frame) {
+        listeners.forEach(listener -> listener.onWsResponse(connectionContext, frame));
     }
 
     @Override
