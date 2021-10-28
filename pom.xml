@@ -20,7 +20,7 @@
     <guava.version>31.0.1-jre</guava.version>
     <logback.version>1.2.6</logback.version>
     <bouncycastle.version>1.69</bouncycastle.version>
-    <commons-cli.version>1.4</commons-cli.version>
+    <commons-cli.version>1.5.0</commons-cli.version>
     <junit.version>4.13.2</junit.version>
     <assertj.version>3.21.0</assertj.version>
     <mockito.version>4.0.0</mockito.version>
