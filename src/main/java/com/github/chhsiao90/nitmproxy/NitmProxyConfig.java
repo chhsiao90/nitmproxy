@@ -3,7 +3,9 @@ package com.github.chhsiao90.nitmproxy;
 import com.github.chhsiao90.nitmproxy.enums.ProxyMode;
 import com.github.chhsiao90.nitmproxy.handler.protocol.ProtocolDetector;
 import com.github.chhsiao90.nitmproxy.handler.protocol.http1.Http1ProtocolDetector;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerStore;
 import com.github.chhsiao90.nitmproxy.tls.UnsafeAccessSupport;
 import com.google.common.base.Joiner;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -42,7 +44,7 @@ public class NitmProxyConfig {
     private int maxContentLength;
 
     private NitmProxyStatusListener statusListener;
-    private List<NitmProxyListenerProvider> listeners;
+    private NitmProxyListenerStore listenerStore;
 
     private TrustManager trustManager;
     private UnsafeAccessSupport unsafeAccessSupport = UnsafeAccessSupport.DENY;
@@ -61,7 +63,7 @@ public class NitmProxyConfig {
 
         maxContentLength = 1024 * 1024;
 
-        listeners = new ArrayList<>();
+        listenerStore = new NitmProxyListenerStore();
         detectors = Collections.singletonList(Http1ProtocolDetector.INSTANCE);
     }
 
@@ -170,12 +172,18 @@ public class NitmProxyConfig {
         this.statusListener = statusListener;
     }
 
-    public List<NitmProxyListenerProvider> getListeners() {
-        return listeners;
+    public NitmProxyListenerStore getListenerStore() {
+        return listenerStore;
     }
 
+    @Deprecated
+    public List<NitmProxyListenerProvider> getListeners() {
+        return listenerStore.getListeners();
+    }
+
+    @Deprecated
     public void setListeners(List<NitmProxyListenerProvider> listeners) {
-        this.listeners = listeners;
+        listenerStore = new NitmProxyListenerStore(listeners);
     }
 
     public UnsafeAccessSupport getUnsafeAccessSupport() {
