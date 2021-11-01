@@ -19,7 +19,7 @@ public class NitmProxyMaster {
                            BackendChannelBootstrap backendChannelBootstrap) {
         this.config = config;
         this.backendChannelBootstrap = backendChannelBootstrap;
-        this.listenerProvider = new NitmProxyListenerManagerProvider(config.getListeners());
+        this.listenerProvider = new NitmProxyListenerManagerProvider(config.getListenerStore());
         this.certManager = new CertManager(config);
     }
 
