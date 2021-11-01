@@ -1,10 +1,9 @@
 package com.github.chhsiao90.nitmproxy.handler.protocol.http2;
 
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
-import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
 import com.github.chhsiao90.nitmproxy.http.HttpUtil;
-import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
@@ -14,6 +13,7 @@ import io.netty.handler.codec.http2.Http2Frame;
 import io.netty.handler.codec.http2.Http2Headers;
 import io.netty.handler.codec.http2.Http2HeadersFrame;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.concurrent.PromiseCombiner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +27,7 @@ import static java.lang.System.*;
 
 public class Http2EventHandler extends ChannelDuplexHandler {
 
-    private HttpListener listener;
+    private NitmProxyListener listener;
     private ConnectionContext connectionContext;
 
     private Map<Integer, FrameCollector> streams = new ConcurrentHashMap<>();
@@ -35,42 +35,51 @@ public class Http2EventHandler extends ChannelDuplexHandler {
     /**
      * Create new instance of http1 event handler.
      *
-     * @param master            the master
      * @param connectionContext the connection context
      */
-    public Http2EventHandler(
-            NitmProxyMaster master,
-            ConnectionContext connectionContext) {
-        this.listener = master.httpEventListener();
+    public Http2EventHandler(ConnectionContext connectionContext) {
         this.connectionContext = connectionContext;
+        this.listener = connectionContext.listener();
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise)
             throws Exception {
-        if (msg instanceof Http2FrameWrapper) {
-            Http2FrameWrapper<?> frameWrapper = (Http2FrameWrapper<?>) msg;
-            FrameCollector frameCollector = streams.computeIfAbsent(frameWrapper.streamId(), this::newFrameCollector);
-            boolean streamEnded = false;
-            if (Http2FrameWrapper.isFrame(msg, Http2HeadersFrame.class)) {
-                listener.onHttp2Response(connectionContext, (Http2FrameWrapper<Http2HeadersFrame>) msg);
-                streamEnded = frameCollector.onResponseHeadersFrame(frameWrapper.frame(Http2HeadersFrame.class));
-            }
-            if (Http2FrameWrapper.isFrame(msg, Http2DataFrame.class)) {
-                listener.onHttp2ResponseData(connectionContext, (Http2DataFrameWrapper) msg);
-                streamEnded = frameCollector.onResponseDataFrame(frameWrapper.frame(Http2DataFrame.class));
-            }
-            if (streamEnded) {
-                try {
-                    frameCollector.collect().ifPresent(listener::onHttpEvent);
-                } finally {
-                    frameCollector.release();
-                    streams.remove(frameWrapper.streamId());
-                }
+        if (!(msg instanceof Http2FrameWrapper)) {
+            ctx.write(msg, promise);
+            return;
+        }
+
+        Http2FrameWrapper<?> frameWrapper = (Http2FrameWrapper<?>) msg;
+        FrameCollector frameCollector = streams.computeIfAbsent(frameWrapper.streamId(), this::newFrameCollector);
+        List<Http2FrameWrapper<?>> output = listener.onHttp2Response(connectionContext, frameWrapper);
+        boolean streamEnded = output.stream()
+                .map(wrapper -> frameCollector.onResponseFrame(wrapper.frame()))
+                .filter(Boolean::booleanValue)
+                .findFirst()
+                .orElse(false);
+        writeFrames(ctx, output, promise);
+        if (streamEnded) {
+            try {
+                frameCollector.collect().ifPresent(listener::onHttpEvent);
+            } finally {
+                frameCollector.release();
+                streams.remove(frameWrapper.streamId());
             }
         }
-        super.write(ctx, msg, promise);
+    }
+
+    private void writeFrames(ChannelHandlerContext ctx, List<? extends Http2FrameWrapper<?>> frames,
+            ChannelPromise promise) {
+        if (frames.isEmpty()) {
+            promise.setSuccess();
+        } else if (frames.size() == 1) {
+            ctx.write(frames.get(0), promise);
+        } else {
+            PromiseCombiner combiner = new PromiseCombiner(ctx.executor());
+            frames.stream().map(ctx::write).forEach(combiner::add);
+            combiner.finish(promise);
+        }
     }
 
     @Override
@@ -165,6 +174,16 @@ public class Http2EventHandler extends ChannelDuplexHandler {
                 return Optional.of(request);
             }
             return Optional.empty();
+        }
+
+        public boolean onResponseFrame(Http2Frame frame) {
+            if (frame instanceof Http2HeadersFrame) {
+                return onResponseHeadersFrame((Http2HeadersFrame) frame);
+            }
+            if (frame instanceof Http2DataFrame) {
+                return onResponseDataFrame((Http2DataFrame) frame);
+            }
+            return false;
         }
 
         public boolean onResponseHeadersFrame(Http2HeadersFrame frame) {

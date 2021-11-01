@@ -3,6 +3,7 @@ package com.github.chhsiao90.nitmproxy.handler.protocol.ws;
 import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -30,7 +31,10 @@ public class WebSocketBackendHandlerTest {
 
     @Before
     public void setUp() {
-        ConnectionContext context = new ConnectionContext(mock(NitmProxyMaster.class))
+        NitmProxyMaster master = mock(NitmProxyMaster.class);
+        when(master.listenerProvider()).thenReturn(NitmProxyListenerProvider.empty());
+
+        ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(new Address("localhost", 8888));
 
         channel = new EmbeddedChannel(new WebSocketBackendHandler(context));

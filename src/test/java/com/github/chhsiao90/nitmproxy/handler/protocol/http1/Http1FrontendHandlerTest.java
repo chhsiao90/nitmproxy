@@ -5,6 +5,7 @@ import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.HandlerProvider;
 import com.github.chhsiao90.nitmproxy.NitmProxyConfig;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerAdapter;
@@ -35,6 +36,7 @@ public class Http1FrontendHandlerTest {
         HandlerProvider provider = mock(HandlerProvider.class);
         when(master.config()).thenReturn(new NitmProxyConfig());
         when(master.provider(any())).thenReturn(provider);
+        when(master.listenerProvider()).thenReturn(NitmProxyListenerProvider.empty());
         when(provider.http1EventHandler()).thenReturn(new ChannelHandlerAdapter() {});
         when(provider.tlsFrontendHandler()).thenReturn(new ChannelHandlerAdapter() {});
         when(provider.wsFrontendHandler()).thenReturn(new ChannelHandlerAdapter() {});

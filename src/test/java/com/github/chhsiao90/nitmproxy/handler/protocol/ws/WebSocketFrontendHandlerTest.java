@@ -4,6 +4,7 @@ import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.HandlerProvider;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider;
 import com.github.chhsiao90.nitmproxy.testing.EmptyChannelHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
@@ -38,6 +39,7 @@ public class WebSocketFrontendHandlerTest {
 
         NitmProxyMaster master = mock(NitmProxyMaster.class);
         when(master.provider(any())).thenReturn(provider);
+        when(master.listenerProvider()).thenReturn(NitmProxyListenerProvider.empty());
 
         context = new ConnectionContext(master)
                 .withClientAddr(new Address("localhost", 8888));

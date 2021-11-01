@@ -9,14 +9,13 @@ import org.slf4j.LoggerFactory;
 
 import static com.github.chhsiao90.nitmproxy.util.LogWrappers.*;
 
-public class ToServerHandler extends ChannelDuplexHandler {
+public class TailFrontendHandler extends ChannelDuplexHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ToServerHandler.class);
-    public static final String NAME = "toServerHandler";
+    private static final Logger LOGGER = LoggerFactory.getLogger(TailFrontendHandler.class);
 
     private ConnectionContext connectionContext;
 
-    public ToServerHandler(ConnectionContext connectionContext) {
+    public TailFrontendHandler(ConnectionContext connectionContext) {
         this.connectionContext = connectionContext;
     }
 
@@ -31,4 +30,12 @@ public class ToServerHandler extends ChannelDuplexHandler {
         LOGGER.debug("{} : write {} to server", connectionContext, description(msg));
         connectionContext.serverChannel().writeAndFlush(msg);
     }
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        super.channelInactive(ctx);
+        LOGGER.debug("{} : channelInactive", connectionContext);
+        connectionContext.close();
+    }
+
 }

@@ -3,8 +3,10 @@ package com.github.chhsiao90.nitmproxy;
 import com.github.chhsiao90.nitmproxy.handler.proxy.HttpProxyHandler;
 import com.github.chhsiao90.nitmproxy.handler.proxy.SocksProxyHandler;
 import com.github.chhsiao90.nitmproxy.handler.proxy.TransparentProxyHandler;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
 import com.github.chhsiao90.nitmproxy.tls.TlsContext;
 import com.github.chhsiao90.nitmproxy.ws.WebSocketContext;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandler;
@@ -17,6 +19,9 @@ public class ConnectionContext {
 
     private NitmProxyMaster master;
     private HandlerProvider provider;
+    private NitmProxyListener listener;
+
+    private ByteBufAllocator alloc;
 
     private Address clientAddr;
     private Address serverAddr;
@@ -32,6 +37,7 @@ public class ConnectionContext {
         this.provider = master.provider(this);
         this.tlsCtx = new TlsContext();
         this.wsCtx = new WebSocketContext();
+        this.listener = master.listenerProvider().create();
     }
 
     public ConnectionContext withClientAddr(Address clientAddr) {
@@ -60,6 +66,15 @@ public class ConnectionContext {
     public ConnectionContext withServerChannel(Channel serverChannel) {
         this.serverChannel = serverChannel;
         return this;
+    }
+
+    public ConnectionContext withAlloc(ByteBufAllocator alloc) {
+        this.alloc = alloc;
+        return this;
+    }
+
+    public ByteBufAllocator alloc() {
+        return alloc;
     }
 
     public NitmProxyMaster master() {
@@ -105,8 +120,11 @@ public class ConnectionContext {
         serverAddr = address;
         return master.connect(fromCtx, this, new ChannelInitializer<Channel>() {
             @Override
-            protected void initChannel(Channel ch) throws Exception {
-                ch.pipeline().addLast(withServerChannel(ch).provider().tlsBackendHandler());
+            protected void initChannel(Channel ch) {
+                withServerChannel(ch);
+                ch.pipeline().addLast(provider().tlsBackendHandler());
+                ch.pipeline().addLast(provider().tailBackendHandler());
+                listener().onConnect(ConnectionContext.this, ch);
             }
         });
     }
@@ -125,6 +143,14 @@ public class ConnectionContext {
 
     public WebSocketContext wsCtx() {
         return wsCtx;
+    }
+
+    public NitmProxyListener listener() {
+        return listener;
+    }
+
+    public void close() {
+        listener.close(this);
     }
 
     @Override

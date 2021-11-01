@@ -4,11 +4,13 @@ import com.github.chhsiao90.nitmproxy.Address;
 import com.github.chhsiao90.nitmproxy.ConnectionContext;
 import com.github.chhsiao90.nitmproxy.NitmProxyMaster;
 import com.github.chhsiao90.nitmproxy.event.HttpEvent;
-import com.github.chhsiao90.nitmproxy.listener.HttpListener;
+import com.github.chhsiao90.nitmproxy.listener.NitmProxyListener;
+import com.google.common.collect.ImmutableList;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpResponse;
 import org.assertj.core.data.Offset;
 import org.junit.After;
@@ -19,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import java.util.Optional;
 
 import static com.github.chhsiao90.nitmproxy.http.HttpUtil.*;
+import static com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider.*;
 import static com.github.chhsiao90.nitmproxy.testing.EmbeddedChannelAssert.*;
 import static com.google.common.net.HttpHeaders.*;
 import static io.netty.buffer.Unpooled.*;
@@ -33,19 +36,19 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class Http1EventHandlerTest {
-    private HttpListener listener;
+    private NitmProxyListener listener;
     private EmbeddedChannel channel;
 
     @Before
     public void setUp() {
-        listener = mock(HttpListener.class);
+        listener = mock(NitmProxyListener.class);
         NitmProxyMaster master = mock(NitmProxyMaster.class);
-        when(master.httpEventListener()).thenReturn(listener);
+        when(master.listenerProvider()).thenReturn(singleton(listener));
 
         ConnectionContext context = new ConnectionContext(master)
                 .withClientAddr(new Address("localhost", 8080))
                 .withClientChannel(channel);
-        Http1EventHandler handler = new Http1EventHandler(master, context);
+        Http1EventHandler handler = new Http1EventHandler(context);
         channel = new EmbeddedChannel(handler);
     }
 
@@ -57,6 +60,10 @@ public class Http1EventHandlerTest {
     @Test
     public void shouldLogWithFullResponse() {
         when(listener.onHttp1Request(any(), any())).thenReturn(Optional.empty());
+        when(listener.onHttp1Response(any(), any())).thenAnswer(invocation -> {
+            HttpObject httpObject = (HttpObject) invocation.getArguments()[1];
+            return ImmutableList.of(httpObject);
+        });
 
         assertTrue(channel.writeInbound(defaultRequest()));
         assertTrue(channel.writeOutbound(defaultResponse("Hello Nitmproxy")));
@@ -81,6 +88,10 @@ public class Http1EventHandlerTest {
     @Test
     public void shouldLogWithResponseAndContent() {
         when(listener.onHttp1Request(any(), any())).thenReturn(Optional.empty());
+        when(listener.onHttp1Response(any(), any())).thenAnswer(invocation -> {
+            HttpObject httpObject = (HttpObject) invocation.getArguments()[1];
+            return ImmutableList.of(httpObject);
+        });
 
         HttpResponse response = new DefaultHttpResponse(HTTP_1_1, OK);
         response.headers()
@@ -137,6 +148,11 @@ public class Http1EventHandlerTest {
 
     @Test
     public void shouldPipeRequests() {
+        when(listener.onHttp1Response(any(), any())).thenAnswer(invocation -> {
+            HttpObject httpObject = (HttpObject) invocation.getArguments()[1];
+            return ImmutableList.of(httpObject);
+        });
+
         assertTrue(channel.writeInbound(request(HTTP_1_1, GET, "localhost", "/first")));
         assertTrue(channel.writeInbound(request(HTTP_1_1, GET, "localhost", "/second")));
         assertTrue(channel.writeOutbound(defaultResponse("First Response")));
