@@ -8,6 +8,7 @@ import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerProvider;
 import com.github.chhsiao90.nitmproxy.listener.NitmProxyListenerStore;
 import com.github.chhsiao90.nitmproxy.tls.UnsafeAccessSupport;
 import com.google.common.base.Joiner;
+import io.netty.channel.Channel;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
 
@@ -17,6 +18,7 @@ import java.security.Provider;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static com.github.chhsiao90.nitmproxy.tls.CertUtil.*;
 import static java.lang.String.*;
@@ -50,6 +52,16 @@ public class NitmProxyConfig {
     private UnsafeAccessSupport unsafeAccessSupport = UnsafeAccessSupport.DENY;
 
     private List<ProtocolDetector> detectors;
+
+    /**
+     * Handler for getting the created channel of the backend, i.e. the channel connecting to the actual target.
+     * <p>
+     *     E.g. in Android this can be used to used to protect the channel
+     *     <a href="https://developer.android.com/reference/android/net/VpnService#protect(int)">
+     *         VpnService#protect(int)</a>
+     * </p>
+     */
+    private Consumer<Channel> onConnectHandler;
 
     // Default values
     public NitmProxyConfig() {
@@ -200,6 +212,14 @@ public class NitmProxyConfig {
 
     public void setDetectors(List<ProtocolDetector> detectors) {
         this.detectors = detectors;
+    }
+
+    public Consumer<Channel> getOnConnectHandler() {
+        return onConnectHandler;
+    }
+
+    public void setOnConnectHandler(Consumer<Channel> onConnectHandler) {
+        this.onConnectHandler = onConnectHandler;
     }
 
     @Override
